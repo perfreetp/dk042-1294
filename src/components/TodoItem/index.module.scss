@@ -1,0 +1,121 @@
+@use '@/styles/variables.scss' as *;
+
+.item {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  display: flex;
+  gap: $spacing-md;
+  box-shadow: 0 4rpx 16rpx rgba(255, 139, 167, 0.06);
+  margin-bottom: $spacing-sm;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+  }
+
+  &.completed {
+    opacity: 0.7;
+  }
+}
+
+.checkbox {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: $radius-md;
+  border: 3rpx solid $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+  transition: all $transition-fast;
+
+  &.checked {
+    border-color: $color-primary;
+  }
+}
+
+.checkIcon {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: $font-weight-bold;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: 10rpx;
+  flex-wrap: wrap;
+}
+
+.typeTag {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.typeIcon {
+  font-size: 26rpx;
+}
+
+.typeLabel {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.importantTag {
+  background: linear-gradient(135deg, #FFE4E6 0%, #FFC2D1 100%);
+  padding: 4rpx 12rpx;
+  border-radius: $radius-round;
+}
+
+.importantText {
+  font-size: 20rpx;
+  color: #E56B8B;
+  font-weight: $font-weight-medium;
+}
+
+.title {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: 1.5;
+  margin-bottom: 8rpx;
+  display: block;
+
+  &.lineThrough {
+    text-decoration: line-through;
+    color: $color-text-tertiary;
+  }
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-bottom: 6rpx;
+}
+
+.timeIcon {
+  font-size: 22rpx;
+}
+
+.timeText {
+  font-size: $font-size-sm;
+  color: $color-error;
+  font-weight: $font-weight-medium;
+}
+
+.description {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  display: block;
+}

@@ -1,0 +1,55 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  box-shadow: 0 4rpx 16rpx rgba(255, 139, 167, 0.08);
+  border: 2rpx solid transparent;
+}
+
+.iconWrap {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon {
+  font-size: 40rpx;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+  margin-bottom: 6rpx;
+}
+
+.value {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+}
+
+.suffix {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.label {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  @include text-ellipsis;
+}

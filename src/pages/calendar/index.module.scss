@@ -1,0 +1,410 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+}
+
+// 阶段切换条
+.stageTabs {
+  display: flex;
+  gap: $spacing-sm;
+  padding: $spacing-md 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin-bottom: $spacing-sm;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.stageTab {
+  flex-shrink: 0;
+  padding: 12rpx 24rpx;
+  border-radius: $radius-round;
+  background: $color-bg-card;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  transition: all $transition-base;
+
+  &.active {
+    transform: scale(1.02);
+    box-shadow: 0 4rpx 12rpx rgba(255, 139, 167, 0.15);
+  }
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.stageDot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: $radius-round;
+  flex-shrink: 0;
+}
+
+.stageTabText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-secondary;
+}
+
+.stageTab.active .stageTabText {
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+// 日历卡片
+.calendarCard {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  box-shadow: 0 4rpx 20rpx rgba(255, 139, 167, 0.08);
+  margin-bottom: $spacing-md;
+}
+
+// 日历控制
+.calendarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.navBtn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.navIcon {
+  font-size: 32rpx;
+  color: $color-text-secondary;
+}
+
+.monthTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.todayBtn {
+  padding: 10rpx 24rpx;
+  border-radius: $radius-round;
+  background: $color-primary-lighter;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.todayBtnText {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+// 星期标题
+.weekHeader {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: $spacing-sm;
+}
+
+.weekCell {
+  text-align: center;
+  padding: 12rpx 0;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-tertiary;
+}
+
+.weekend {
+  color: $color-primary;
+}
+
+// 日期网格
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6rpx;
+}
+
+.dayCell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-md;
+  position: relative;
+  cursor: pointer;
+  transition: all $transition-fast;
+  gap: 4rpx;
+  padding: 4rpx;
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.hasBg {
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 2rpx;
+      border-radius: $radius-md;
+      opacity: 0.25;
+      z-index: 0;
+    }
+  }
+
+  &.otherMonth {
+    opacity: 0.3;
+  }
+}
+
+.dayBgInitial::before { background: $color-stage-initial; }
+.dayBgCheck::before { background: $color-stage-check; }
+.dayBgOvulation::before { background: $color-stage-ovulation; }
+.dayBgRetrieval::before { background: $color-stage-retrieval; }
+.dayBgTransfer::before { background: $color-stage-transfer; }
+.dayBgTest::before { background: $color-stage-test; }
+
+.dayContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.dayNumber {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  width: 52rpx;
+  height: 52rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-round;
+}
+
+.today .dayNumber {
+  background: $color-primary;
+  color: #fff;
+  font-weight: $font-weight-bold;
+}
+
+.selected .dayNumber {
+  border: 3rpx solid $color-primary;
+  color: $color-primary;
+  font-weight: $font-weight-bold;
+}
+
+.today.selected .dayNumber {
+  background: $color-primary;
+  color: #fff;
+  border-color: $color-primary-dark;
+  box-shadow: 0 4rpx 12rpx rgba(255, 139, 167, 0.3);
+}
+
+.eventDots {
+  display: flex;
+  gap: 4rpx;
+  height: 10rpx;
+  align-items: center;
+}
+
+.eventDot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: $radius-round;
+  flex-shrink: 0;
+}
+
+.moreEvents {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: $radius-round;
+  background: $color-text-tertiary;
+}
+
+// 选中日期详情
+.detailCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: 0 4rpx 20rpx rgba(255, 139, 167, 0.08);
+  margin-bottom: $spacing-md;
+}
+
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.detailDate {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.detailWeekday {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-left: 12rpx;
+  font-weight: $font-weight-normal;
+}
+
+.detailBadge {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-round;
+  background: $color-primary-lighter;
+}
+
+.detailBadgeText {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+// 事件列表
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.eventItem {
+  display: flex;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  border-left: 6rpx solid transparent;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.eventIconWrap {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eventIcon {
+  font-size: 32rpx;
+}
+
+.eventContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.eventTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+
+.eventTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  flex: 1;
+}
+
+.eventTime {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  margin-left: $spacing-sm;
+  flex-shrink: 0;
+}
+
+.eventDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}
+
+.eventImportant {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  background: rgba(255, 139, 167, 0.1);
+}
+
+.eventImportantText {
+  font-size: 20rpx;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+// 图例
+.legendCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: 0 4rpx 20rpx rgba(255, 139, 167, 0.08);
+  margin-bottom: $spacing-md;
+}
+
+.legendTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.legendGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.legendDot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: $radius-round;
+  flex-shrink: 0;
+}
+
+.legendText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}

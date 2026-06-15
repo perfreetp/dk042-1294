@@ -1,0 +1,832 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+}
+
+// Tab Bar
+.tabBar {
+  display: flex;
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: 8rpx;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 4rpx 16rpx rgba(255, 139, 167, 0.08);
+}
+
+.tabItem {
+  flex: 1;
+  padding: 18rpx 8rpx;
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.8;
+  }
+
+  &.active {
+    background: linear-gradient(135deg, $color-secondary 0%, $color-secondary-light 100%);
+    box-shadow: 0 4rpx 12rpx rgba(110, 198, 183, 0.25);
+  }
+}
+
+.tabIcon {
+  font-size: 28rpx;
+}
+
+.tabLabel {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-secondary;
+}
+
+.tabItem.active .tabLabel {
+  color: #fff;
+  font-weight: $font-weight-semibold;
+}
+
+// 今日记录大卡片
+.todayCard {
+  background: linear-gradient(135deg, #FFF9F0 0%, #FFF0F3 50%, #F0EEFF 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl $spacing-lg;
+  margin-bottom: $spacing-md;
+  border: 2rpx solid rgba(255, 139, 167, 0.15);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '🌸';
+    position: absolute;
+    right: -10rpx;
+    top: 20rpx;
+    font-size: 120rpx;
+    opacity: 0.08;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-lg;
+  position: relative;
+  z-index: 1;
+}
+
+.cardTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.cardSubtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.abnormalBtn {
+  padding: 12rpx 20rpx;
+  background: linear-gradient(135deg, $color-error 0%, #FAB1A0 100%);
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  box-shadow: 0 4rpx 12rpx rgba(225, 112, 85, 0.25);
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.abnormalIcon {
+  font-size: 24rpx;
+}
+
+.abnormalText {
+  font-size: $font-size-xs;
+  color: #fff;
+  font-weight: $font-weight-semibold;
+}
+
+// 生理指标
+.vitalsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+  margin-bottom: $spacing-lg;
+  position: relative;
+  z-index: 1;
+}
+
+.vitalItem {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  border: 1rpx solid rgba(255, 139, 167, 0.1);
+}
+
+.vitalLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-bottom: 10rpx;
+}
+
+.vitalIcon {
+  font-size: 22rpx;
+}
+
+.vitalValue {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1;
+  margin-bottom: 4rpx;
+  display: block;
+}
+
+.vitalUnit {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-normal;
+  margin-left: 4rpx;
+}
+
+.vitalTrend {
+  font-size: $font-size-xs;
+  color: $color-success;
+}
+
+// 情绪选择
+.sectionBlock {
+  margin-bottom: $spacing-lg;
+  position: relative;
+  z-index: 1;
+}
+
+.sectionLabel {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.moodGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: $spacing-sm;
+}
+
+.moodItem {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: $radius-lg;
+  padding: $spacing-md 8rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  border: 3rpx solid transparent;
+  transition: all $transition-base;
+
+  &.selected {
+    background: #fff;
+    border-color: $color-primary;
+    box-shadow: 0 4rpx 12rpx rgba(255, 139, 167, 0.15);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.moodEmoji {
+  font-size: 44rpx;
+}
+
+.moodLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.moodItem.selected .moodLabel {
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+// 症状标签
+.symptomsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.symptomTag {
+  padding: 12rpx 20rpx;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.selected {
+    background: $color-primary-lighter;
+    border-color: $color-primary;
+    color: $color-primary;
+    font-weight: $font-weight-medium;
+  }
+
+  &.abnormal {
+    &.selected {
+      background: #FDF0EC;
+      border-color: $color-error;
+      color: $color-error;
+    }
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+// 备注输入
+.notesInputWrap {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  border: 1rpx solid rgba(255, 139, 167, 0.1);
+}
+
+.notesInput {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.6;
+  width: 100%;
+  min-height: 120rpx;
+}
+
+// 保存按钮
+.saveBtn {
+  margin-top: $spacing-md;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(255, 139, 167, 0.25);
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.95;
+  }
+}
+
+.saveBtnText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: #fff;
+}
+
+// 历史记录
+.historyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md 0 $spacing-sm;
+}
+
+.historyTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.historyItem {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md $spacing-lg;
+  box-shadow: 0 2rpx 12rpx rgba(255, 139, 167, 0.04);
+  display: flex;
+  gap: $spacing-md;
+
+  &.abnormal {
+    border-left: 6rpx solid $color-error;
+    background: linear-gradient(90deg, #FFF6F4 0%, #FFFFFF 30%);
+  }
+}
+
+.historyDate {
+  flex-shrink: 0;
+  width: 90rpx;
+  text-align: center;
+}
+
+.historyDay {
+  font-size: 36rpx;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  display: block;
+  line-height: 1.1;
+}
+
+.historyMonth {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.historyContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.historyTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8rpx;
+}
+
+.historyMood {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.historyMoodEmoji {
+  font-size: 28rpx;
+}
+
+.historyMoodText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.historyVitals {
+  display: flex;
+  gap: $spacing-lg;
+  margin-bottom: 8rpx;
+}
+
+.historyVital {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.historyVitalValue {
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.historySymptoms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.historySymptom {
+  font-size: 20rpx;
+  padding: 4rpx 10rpx;
+  background: $color-bg-tag;
+  color: $color-text-secondary;
+  border-radius: $radius-xs;
+}
+
+.historyAbnormalTag {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  background: #FDF0EC;
+  color: $color-error;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-medium;
+  margin-left: auto;
+}
+
+// 验孕卡片
+.testCountdown {
+  background: linear-gradient(135deg, #6EC6B7 0%, #A8DDD3 50%, #C4B5FD 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl $spacing-lg;
+  margin-bottom: $spacing-md;
+  color: #fff;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &::before {
+    width: 200rpx;
+    height: 200rpx;
+    top: -60rpx;
+    right: -40rpx;
+  }
+
+  &::after {
+    width: 150rpx;
+    height: 150rpx;
+    bottom: -40rpx;
+    left: -30rpx;
+  }
+}
+
+.countdownLabel {
+  font-size: $font-size-sm;
+  opacity: 0.95;
+  margin-bottom: 12rpx;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.countdownDays {
+  font-size: 88rpx;
+  font-weight: $font-weight-bold;
+  line-height: 1;
+  display: block;
+  margin-bottom: 8rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.countdownUnit {
+  font-size: $font-size-md;
+  font-weight: $font-weight-normal;
+  margin-left: 8rpx;
+  opacity: 0.9;
+}
+
+.countdownDesc {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.countdownTips {
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: $radius-lg;
+  display: inline-block;
+  font-size: $font-size-sm;
+  position: relative;
+  z-index: 1;
+}
+
+// 验孕记录时间轴
+.testTimeline {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: 0 4rpx 16rpx rgba(255, 139, 167, 0.06);
+  margin-bottom: $spacing-md;
+}
+
+.testItem {
+  display: flex;
+  gap: $spacing-md;
+  padding-bottom: $spacing-md;
+  position: relative;
+
+  &:not(:last-child) {
+    &::after {
+      content: '';
+      position: absolute;
+      left: 28rpx;
+      top: 64rpx;
+      bottom: 0;
+      width: 3rpx;
+      background: $color-divider;
+    }
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.testDot {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.testDotPositive {
+  background: #E8F8F5;
+}
+
+.testDotNegative {
+  background: #F5F6F7;
+}
+
+.testDotPending {
+  background: #FFF9E6;
+}
+
+.testDotIcon {
+  font-size: 30rpx;
+}
+
+.testContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.testHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8rpx;
+}
+
+.testTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.testDaysAfter {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: $color-primary-lighter;
+  padding: 4rpx 14rpx;
+  border-radius: $radius-round;
+  font-weight: $font-weight-medium;
+}
+
+.testMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+  margin-bottom: 8rpx;
+}
+
+.testMetaItem {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.testResult {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 20rpx;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.resultPositive {
+  background: #E8F8F5;
+  color: $color-success;
+}
+
+.resultNegative {
+  background: #F5F6F7;
+  color: $color-text-tertiary;
+}
+
+.resultPending {
+  background: #FFF9E6;
+  color: #F39C12;
+}
+
+.testNotes {
+  margin-top: 10rpx;
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}
+
+// 添加记录按钮
+.addRecordBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  border: 2rpx dashed $color-border;
+  margin-bottom: $spacing-md;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.85;
+    border-color: $color-primary;
+  }
+}
+
+.addRecordIcon {
+  font-size: 28rpx;
+  color: $color-primary;
+}
+
+.addRecordText {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+// 趋势图表
+.trendCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: 0 4rpx 16rpx rgba(255, 139, 167, 0.06);
+  margin-bottom: $spacing-md;
+}
+
+.trendHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.trendTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.trendValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+}
+
+.trendUnit {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  font-weight: $font-weight-normal;
+}
+
+// 简化柱状图
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8rpx;
+  height: 240rpx;
+  padding-top: $spacing-sm;
+}
+
+.barItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.barWrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bar {
+  width: 70%;
+  max-width: 32rpx;
+  background: linear-gradient(180deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-xs $radius-xs 0 0;
+  transition: height $transition-slow ease;
+  position: relative;
+
+  &::after {
+    content: attr(data-value);
+    position: absolute;
+    top: -36rpx;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 18rpx;
+    color: $color-text-secondary;
+    white-space: nowrap;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.barLabel {
+  font-size: 20rpx;
+  color: $color-text-tertiary;
+  @include text-ellipsis;
+  max-width: 100%;
+}
+
+// 情绪热力图
+.moodCalendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6rpx;
+}
+
+.moodCell {
+  aspect-ratio: 1;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  transition: all $transition-base;
+
+  &.hasRecord {
+    font-weight: $font-weight-semibold;
+  }
+
+  &.level5 { background: #E8F8F5; color: #00B894; }
+  &.level4 { background: #EBF5FF; color: #74B9FF; }
+  &.level3 { background: #FFF9E6; color: #FDCB6E; }
+  &.level2 { background: #FFF0F3; color: #FF8BA7; }
+  &.level1 { background: #FDF0EC; color: #E17055; }
+}
+
+.moodWeekHeader {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6rpx;
+  margin-bottom: 8rpx;
+}
+
+.moodWeekLabel {
+  text-align: center;
+  font-size: 20rpx;
+  color: $color-text-tertiary;
+  padding: 4rpx 0;
+}
+
+.moodLegend {
+  display: flex;
+  justify-content: center;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.legendDot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: $radius-xs;
+}
+
+.legendText {
+  font-size: 20rpx;
+  color: $color-text-tertiary;
+}

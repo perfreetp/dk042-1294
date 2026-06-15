@@ -1,0 +1,331 @@
+@use '@/styles/variables.scss' as *;
+@use '@/styles/theme.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FFF5F7 0%, #F8F7FF 100%);
+  padding-bottom: 40rpx;
+}
+
+// 顶部未读统计卡
+.summaryCard {
+  margin: 24rpx;
+  padding: $spacing-xl $spacing-lg;
+  background: linear-gradient(135deg, #FF8BA7 0%, #FFC3D0 50%, #B8E6DB 100%);
+  border-radius: $radius-xl;
+  box-shadow: 0 8rpx 32rpx rgba(255, 139, 167, 0.25);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '🔔';
+    position: absolute;
+    right: -20rpx;
+    top: -10rpx;
+    font-size: 180rpx;
+    opacity: 0.12;
+  }
+}
+
+.summaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  position: relative;
+  z-index: 1;
+}
+
+.summaryTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: #fff;
+}
+
+.readAllBtn {
+  padding: 10rpx 20rpx;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10rpx);
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  color: #fff;
+  font-weight: $font-weight-medium;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.35);
+  }
+}
+
+.unreadGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+  position: relative;
+  z-index: 1;
+}
+
+.unreadItem {
+  text-align: center;
+  padding: $spacing-md 8rpx;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: $radius-lg;
+}
+
+.unreadCount {
+  font-size: 44rpx;
+  font-weight: $font-weight-bold;
+  color: #fff;
+  line-height: 1.2;
+  display: block;
+}
+
+.unreadLabel {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 4rpx;
+  display: block;
+}
+
+// 筛选TabBar
+.filterTabs {
+  display: flex;
+  padding: 0 24rpx;
+  gap: 12rpx;
+  margin-bottom: $spacing-md;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.filterTab {
+  flex-shrink: 0;
+  padding: 14rpx 28rpx;
+  background: $color-bg-card;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  transition: all $transition-base;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    color: #fff;
+    box-shadow: 0 4rpx 16rpx rgba(255, 139, 167, 0.3);
+  }
+}
+
+.tabBadge {
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: $radius-round;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+.filterTab:not(.active) .tabBadge {
+  background: $color-error;
+  color: #fff;
+}
+
+// 日期分组标题
+.dateSection {
+  margin: 0 24rpx $spacing-md;
+}
+
+.dateHeader {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: $spacing-md;
+  padding-left: 4rpx;
+}
+
+.dateTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.dateLine {
+  flex: 1;
+  height: 2rpx;
+  background: linear-gradient(90deg, rgba(255, 139, 167, 0.2) 0%, transparent 100%);
+}
+
+// 消息卡片
+.messageCard {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  display: flex;
+  gap: $spacing-md;
+  position: relative;
+  transition: all $transition-base;
+  border: 2rpx solid transparent;
+
+  &:active {
+    transform: scale(0.99);
+    background: #FAFAFA;
+  }
+
+  &.unread {
+    background: linear-gradient(135deg, #FFF9FA 0%, #FFFDFE 100%);
+    border-color: rgba(255, 139, 167, 0.15);
+    box-shadow: 0 4rpx 20rpx rgba(255, 139, 167, 0.1);
+  }
+}
+
+.unreadDot {
+  position: absolute;
+  top: $spacing-lg;
+  left: 12rpx;
+  width: 12rpx;
+  height: 12rpx;
+  background: $color-error;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4rpx rgba(225, 112, 85, 0.15);
+}
+
+// 消息类型图标
+.iconWrap {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.iconWrap_appointment {
+  background: linear-gradient(135deg, #A29BFE 0%, #D8D4FF 100%);
+}
+
+.iconWrap_medication {
+  background: linear-gradient(135deg, $color-secondary 0%, #D4F0EA 100%);
+}
+
+.iconWrap_family {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+}
+
+.iconWrap_reminder {
+  background: linear-gradient(135deg, #FDCB6E 0%, #FFE8B0 100%);
+}
+
+.iconWrap_system {
+  background: linear-gradient(135deg, #74B9FF 0%, #B8DBFF 100%);
+}
+
+// 消息内容
+.messageContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.messageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8rpx;
+}
+
+.messageTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .unread & {
+    font-weight: $font-weight-bold;
+  }
+}
+
+.messageTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  flex-shrink: 0;
+  margin-left: $spacing-sm;
+  white-space: nowrap;
+}
+
+.messageBody {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.messageFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: $spacing-sm;
+}
+
+.typeTag {
+  padding: 6rpx 14rpx;
+  border-radius: $radius-round;
+  font-size: 22rpx;
+  font-weight: $font-weight-medium;
+}
+
+.typeTag_appointment {
+  background: rgba(162, 155, 254, 0.15);
+  color: #6C5CE7;
+}
+
+.typeTag_medication {
+  background: rgba(110, 198, 183, 0.15);
+  color: $color-secondary;
+}
+
+.typeTag_family {
+  background: rgba(255, 139, 167, 0.15);
+  color: $color-primary;
+}
+
+.typeTag_reminder {
+  background: rgba(253, 203, 110, 0.2);
+  color: #E17055;
+}
+
+.typeTag_system {
+  background: rgba(116, 185, 255, 0.15);
+  color: #0984E3;
+}
+
+.arrowIcon {
+  font-size: 28rpx;
+  color: $color-text-tertiary;
+}

@@ -1,0 +1,37 @@
+@use '@/styles/variables.scss' as *;
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+  flex: 1;
+  min-width: 0;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.85;
+    transform: scale(0.96);
+  }
+}
+
+.iconWrap {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  font-size: 44rpx;
+}
+
+.label {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  text-align: center;
+  @include text-ellipsis;
+  max-width: 100%;
+}
