@@ -9,7 +9,10 @@ import EmptyState from '@/components/EmptyState';
 
 import { todoList, medicationList, documentList, expenseList, questionList } from '@/data/checklistData';
 import { formatDate, isToday, parseDate, diffDays, formatDateCN } from '@/utils/dateUtils';
-import type { TodoItem, MedicationRecord, MedicalDocument, ExpenseRecord, QuestionCard } from '@/types';
+import type {
+  TodoItem, MedicationItem, MedicalDocument,
+  ExpenseRecord, QuestionCard, VisitSummary
+} from '@/types';
 
 type TabType = 'todo' | 'medication' | 'document' | 'expense' | 'question';
 
@@ -43,6 +46,7 @@ const expenseCategoryConfig: Record<string, { bg: string; color: string; label: 
 
 const STORAGE_KEY_DOCS = 'ivf_medical_documents';
 const STORAGE_KEY_EXPENSES = 'ivf_expense_records';
+const STORAGE_KEY_VISITS = 'ivf_visit_summaries';
 
 const loadFromStorage = <T,>(key: string, fallback: T): T => {
   try {
@@ -98,13 +102,17 @@ const ChecklistPage: React.FC = () => {
     date: string;
     hospital: string;
     notes: string;
+    createExpense: boolean;
+    expenseAmount: string;
   }>({
     imageUrl: '',
     title: '',
     category: 'report',
     date: todayStr,
     hospital: '',
-    notes: ''
+    notes: '',
+    createExpense: false,
+    expenseAmount: ''
   });
 
   // 费用表单
@@ -129,6 +137,27 @@ const ChecklistPage: React.FC = () => {
   const [answeringId, setAnsweringId] = useState<string>('');
   const [answerText, setAnswerText] = useState('');
   const [answerDoctor, setAnswerDoctor] = useState('');
+
+  const [visitSummaries, setVisitSummaries] = useState<VisitSummary[]>(() => loadFromStorage(STORAGE_KEY_VISITS, []));
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryForm, setSummaryForm] = useState<{
+    hospital: string;
+    doctor: string;
+    questions: Array<{ question: string; answer?: string; doctor?: string }>;
+    followUps: string[];
+    notes: string;
+  }>({
+    hospital: '',
+    doctor: '',
+    questions: [],
+    followUps: [],
+    notes: ''
+  });
+  const [newFollowUp, setNewFollowUp] = useState('');
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_VISITS, visitSummaries);
+  }, [visitSummaries]);
 
   // ==========================================
   // 待办分组
@@ -236,7 +265,8 @@ const ChecklistPage: React.FC = () => {
       fail: () => {
         setNewDoc({
           imageUrl: '', title: '', category: 'report',
-          date: todayStr, hospital: '', notes: ''
+          date: todayStr, hospital: '', notes: '',
+          createExpense: false, expenseAmount: ''
         });
         setShowDocModal(true);
       }
@@ -248,22 +278,56 @@ const ChecklistPage: React.FC = () => {
       Taro.showToast({ title: '请填写单据名称', icon: 'none' });
       return;
     }
+    if (newDoc.createExpense) {
+      const amt = parseFloat(newDoc.expenseAmount);
+      if (!amt || amt <= 0) {
+        Taro.showToast({ title: '请输入费用金额', icon: 'none' });
+        return;
+      }
+      if (!newDoc.hospital || !newDoc.hospital.trim()) {
+        Taro.showToast({ title: '请填写医院名称', icon: 'none' });
+        return;
+      }
+    }
+
+    const docId = `doc-u${Date.now()}`;
     const doc: MedicalDocument = {
-      id: `doc-u${Date.now()}`,
+      id: docId,
       title: newDoc.title,
       category: newDoc.category,
       date: newDoc.date,
       hospital: newDoc.hospital || '待补充',
       imageUrl: newDoc.imageUrl || undefined,
-      notes: newDoc.notes || undefined
+      notes: newDoc.notes || undefined,
+      relatedExpenseId: undefined
     };
+
+    if (newDoc.createExpense && newDoc.category === 'invoice') {
+      const amt = parseFloat(newDoc.expenseAmount);
+      const expId = `exp-u${Date.now()}`;
+      const exp: ExpenseRecord = {
+        id: expId,
+        date: newDoc.date,
+        category: 'other',
+        amount: amt,
+        description: newDoc.title,
+        hospital: newDoc.hospital.trim(),
+        relatedDocumentId: docId
+      };
+      doc.relatedExpenseId = expId;
+      setExpenses(prev => [exp, ...prev]);
+      Taro.showToast({ title: '单据和费用已关联保存！', icon: 'success' });
+    } else {
+      Taro.showToast({ title: '单据归档成功！', icon: 'success' });
+    }
+
     setDocuments(prev => [doc, ...prev]);
     setShowDocModal(false);
     setNewDoc({
       imageUrl: '', title: '', category: 'report',
-      date: todayStr, hospital: '', notes: ''
+      date: todayStr, hospital: '', notes: '',
+      createExpense: false, expenseAmount: ''
     });
-    Taro.showToast({ title: '单据归档成功！', icon: 'success' });
   };
 
   // ===== 费用：录入流程 =====
@@ -281,13 +345,17 @@ const ChecklistPage: React.FC = () => {
       Taro.showToast({ title: '请输入有效金额', icon: 'none' });
       return;
     }
+    if (!newExpense.hospital || !newExpense.hospital.trim()) {
+      Taro.showToast({ title: '请填写医院名称', icon: 'none' });
+      return;
+    }
     const exp: ExpenseRecord = {
       id: `exp-u${Date.now()}`,
       date: newExpense.date,
       category: newExpense.category,
       amount: amt,
       description: newExpense.description || expenseCategoryConfig[newExpense.category].label,
-      hospital: newExpense.hospital || undefined
+      hospital: newExpense.hospital.trim()
     };
     setExpenses(prev => [exp, ...prev]);
     setShowExpenseModal(false);
@@ -369,6 +437,58 @@ const ChecklistPage: React.FC = () => {
         }
       }
     });
+  };
+
+  const openSummaryForm = () => {
+    const todayAsked = questions.filter(q => q.isAsked && q.answerDate === formatDateCN(new Date()));
+    setSummaryForm({
+      hospital: '',
+      doctor: '',
+      questions: todayAsked.map(q => ({
+        question: q.question,
+        answer: q.answer,
+        doctor: q.doctor
+      })),
+      followUps: [],
+      notes: ''
+    });
+    setNewFollowUp('');
+    setShowSummaryModal(true);
+  };
+
+  const addFollowUp = () => {
+    if (!newFollowUp.trim()) return;
+    setSummaryForm(prev => ({
+      ...prev,
+      followUps: [...prev.followUps, newFollowUp.trim()]
+    }));
+    setNewFollowUp('');
+  };
+
+  const removeFollowUp = (idx: number) => {
+    setSummaryForm(prev => ({
+      ...prev,
+      followUps: prev.followUps.filter((_, i) => i !== idx)
+    }));
+  };
+
+  const saveVisitSummary = () => {
+    if (!summaryForm.hospital.trim()) {
+      Taro.showToast({ title: '请填写医院名称', icon: 'none' });
+      return;
+    }
+    const summary: VisitSummary = {
+      id: `visit-u${Date.now()}`,
+      date: todayStr,
+      hospital: summaryForm.hospital.trim(),
+      doctor: summaryForm.doctor.trim() || undefined,
+      questions: [...summaryForm.questions],
+      followUps: [...summaryForm.followUps],
+      notes: summaryForm.notes.trim() || undefined
+    };
+    setVisitSummaries(prev => [summary, ...prev]);
+    setShowSummaryModal(false);
+    Taro.showToast({ title: '就诊小结已生成！', icon: 'success' });
   };
 
   // ==========================================
@@ -656,6 +776,25 @@ const ChecklistPage: React.FC = () => {
                     {doc.notes}
                   </Text>
                 )}
+                {doc.relatedExpenseId && (() => {
+                  const relExp = expenses.find(e => e.id === doc.relatedExpenseId);
+                  if (!relExp) return null;
+                  return (
+                    <Text style={{
+                      fontSize: '22rpx',
+                      color: '#6EC6B7',
+                      marginTop: '8rpx',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4rpx',
+                      background: '#E8F8F5',
+                      padding: '8rpx 12rpx',
+                      borderRadius: '8rpx'
+                    }}>
+                      💰 关联费用：¥{relExp.amount} · {relExp.description}
+                    </Text>
+                  );
+                })()}
               </View>
             );
           })}
@@ -765,6 +904,41 @@ const ChecklistPage: React.FC = () => {
                   />
                 </View>
               </View>
+
+              {newDoc.category === 'invoice' && (
+                <View style={{ padding: '20rpx', background: '#FFF5F7', borderRadius: '12rpx', marginBottom: '16rpx' }}>
+                  <View className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx', marginBottom: '16rpx' }}>
+                      <View
+                        className={classnames(styles.chip, newDoc.createExpense && styles.active)}
+                        style={{ padding: '10rpx 20rpx', fontSize: '24rpx' }}
+                        onClick={() => setNewDoc(prev => ({ ...prev, createExpense: !prev.createExpense }))}
+                      >
+                        <Text>💰 同时生成费用记录</Text>
+                      </View>
+                      <Text style={{ fontSize: '22rpx', color: '#86909C' }}>保存后自动关联</Text>
+                    </View>
+                    {newDoc.createExpense && (
+                      <View className={styles.formGroup} style={{ marginBottom: 0 }}>
+                        <Text className={styles.formLabel}>费用金额 *</Text>
+                        <View className={styles.formInput}>
+                          <Input
+                            type='digit'
+                            placeholder="请输入发票金额，例如 865.50"
+                            placeholderClass={styles.formPlaceholder}
+                            value={newDoc.expenseAmount}
+                            onInput={e => setNewDoc(prev => ({ ...prev, expenseAmount: e.detail.value }))}
+                            style={{ width: '100%', fontSize: '28rpx' }}
+                          />
+                        </View>
+                        <Text style={{ fontSize: '22rpx', color: '#B2BEC3', marginTop: '8rpx', display: 'block' }}>
+                          💡 单据名称、日期、医院会自动带入费用记录
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
           ),
           saveDocument,
@@ -854,6 +1028,9 @@ const ChecklistPage: React.FC = () => {
 
         {filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date)).map(exp => {
           const config = expenseCategoryConfig[exp.category];
+          const relatedDoc = exp.relatedDocumentId
+            ? documents.find(d => d.id === exp.relatedDocumentId)
+            : undefined;
           return (
             <View key={exp.id} className={styles.expenseItem}>
               <View className={styles.expenseLeft}>
@@ -865,6 +1042,20 @@ const ChecklistPage: React.FC = () => {
                   <Text className={styles.expenseDate}>
                     {exp.date.slice(5)} {exp.hospital ? `· ${exp.hospital}` : ''}
                   </Text>
+                  {relatedDoc && (
+                    <Text
+                      style={{
+                        fontSize: '22rpx',
+                        color: '#FF8BA7',
+                        marginTop: '6rpx',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4rpx'
+                      }}
+                    >
+                      📄 关联单据：{relatedDoc.title}
+                    </Text>
+                  )}
                 </View>
               </View>
               <View className={styles.expenseRight}>
@@ -931,7 +1122,7 @@ const ChecklistPage: React.FC = () => {
               </View>
 
               <View className={styles.formGroup}>
-                <Text className={styles.formLabel}>费用说明 *</Text>
+                <Text className={styles.formLabel}>费用说明（可选）</Text>
                 <View className={styles.formInput}>
                   <Input
                     placeholder="例如：B超监测 #2"
@@ -944,7 +1135,7 @@ const ChecklistPage: React.FC = () => {
               </View>
 
               <View className={styles.formGroup}>
-                <Text className={styles.formLabel}>日期</Text>
+                <Text className={styles.formLabel}>日期 *</Text>
                 <View className={styles.formInput}>
                   <Input
                     value={newExpense.date}
@@ -956,7 +1147,7 @@ const ChecklistPage: React.FC = () => {
               </View>
 
               <View className={styles.formGroup}>
-                <Text className={styles.formLabel}>医院（选填）</Text>
+                <Text className={styles.formLabel}>医院 *</Text>
                 <View className={styles.formInput}>
                   <Input
                     placeholder="例如：XX市妇幼保健院"
@@ -1023,8 +1214,53 @@ const ChecklistPage: React.FC = () => {
           </View>
         </View>
 
+        {isVisitMode && (
+          <View
+            className={styles.generateSummaryBtn}
+            onClick={openSummaryForm}
+          >
+            <Text style={{ fontSize: '28rpx', color: '#fff', fontWeight: 600 }}>
+              📋 生成本次就诊小结
+            </Text>
+          </View>
+        )}
+
+        {isVisitMode && visitSummaries.length > 0 && (
+          <View style={{ marginTop: '16rpx' }}>
+            <View className={styles.groupHeader}>
+              <Text className={styles.groupTitle}>📚 历史就诊小结</Text>
+              <Text className={styles.groupCount}>{visitSummaries.length} 次</Text>
+            </View>
+            {visitSummaries.slice(0, 5).map(s => (
+              <View key={s.id} className={styles.summaryCardPreview}>
+                <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <View>
+                    <Text style={{ fontSize: '26rpx', fontWeight: 600, color: '#2D3436' }}>
+                      🏥 {s.hospital}
+                    </Text>
+                    <Text style={{ fontSize: '22rpx', color: '#86909C', marginTop: '4rpx', display: 'block' }}>
+                      📅 {s.date.slice(5)} {s.doctor ? `· ${s.doctor}` : ''}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: '22rpx', color: '#6EC6B7', background: '#E8F8F5', padding: '6rpx 12rpx', borderRadius: '8rpx' }}>
+                    {s.questions.length} 个问题
+                  </Text>
+                </View>
+                {s.followUps.length > 0 && (
+                  <View style={{ marginTop: '12rpx' }}>
+                    <Text style={{ fontSize: '22rpx', color: '#E17055', fontWeight: 500 }}>
+                      ⏰ 待办：{s.followUps[0]}
+                      {s.followUps.length > 1 && ` +${s.followUps.length - 1} 项`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
         {isVisitMode && remindedUnanswered.length > 0 && (
-          <View style={{ marginTop: '8rpx' }}>
+          <View style={{ marginTop: '16rpx' }}>
             <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12rpx' }}>
               <View className={styles.groupHeader} style={{ marginBottom: 0, padding: 0 }}>
                 <Text className={styles.groupTitle} style={{ color: '#E17055' }}>🔔 就诊提醒（优先问）</Text>
@@ -1246,6 +1482,141 @@ const ChecklistPage: React.FC = () => {
           ),
           saveAnswer,
           '标记为已咨询'
+        )}
+
+        {/* 就诊小结模态 */}
+        {renderModal(
+          showSummaryModal,
+          '📋 就诊小结',
+          () => setShowSummaryModal(false),
+          (
+            <View>
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>医院 *</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：XX市妇幼保健院"
+                    placeholderClass={styles.formPlaceholder}
+                    value={summaryForm.hospital}
+                    onInput={e => setSummaryForm(prev => ({ ...prev, hospital: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>医生（可选）</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：李医生"
+                    placeholderClass={styles.formPlaceholder}
+                    value={summaryForm.doctor}
+                    onInput={e => setSummaryForm(prev => ({ ...prev, doctor: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              {summaryForm.questions.length > 0 && (
+                <View className={styles.formGroup}>
+                  <Text className={styles.formLabel}>
+                    📝 本次已咨询问题 ({summaryForm.questions.length}个)
+                  </Text>
+                  <View style={{ gap: '12rpx', display: 'flex', flexDirection: 'column' }}>
+                    {summaryForm.questions.map((q, idx) => (
+                      <View
+                        key={idx}
+                        style={{
+                          background: '#F7F8FA',
+                          padding: '16rpx',
+                          borderRadius: '12rpx'
+                        }}
+                      >
+                        <Text style={{ fontSize: '24rpx', fontWeight: 500, color: '#2D3436' }}>
+                          Q: {q.question}
+                        </Text>
+                        {q.answer && (
+                          <Text style={{ fontSize: '22rpx', color: '#6EC6B7', marginTop: '6rpx', display: 'block' }}>
+                            A: {q.answer}
+                          </Text>
+                        )}
+                        {!q.answer && (
+                          <Text style={{ fontSize: '22rpx', color: '#B2BEC3', marginTop: '6rpx', display: 'block' }}>
+                            (未记录医生回复)
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>⏰ 后续待办</Text>
+                <View style={{ display: 'flex', gap: '12rpx', marginBottom: '12rpx' }}>
+                  <View className={styles.formInput} style={{ flex: 1, marginBottom: 0 }}>
+                    <Input
+                      placeholder="例如：3天后复查血值"
+                      placeholderClass={styles.formPlaceholder}
+                      value={newFollowUp}
+                      onInput={e => setNewFollowUp(e.detail.value)}
+                      style={{ width: '100%', fontSize: '28rpx' }}
+                      onConfirm={addFollowUp}
+                    />
+                  </View>
+                  <View
+                    className={styles.visitActionBtn}
+                    style={{ padding: '0 28rpx', height: '80rpx' }}
+                    onClick={addFollowUp}
+                  >
+                    <Text style={{ color: '#fff', fontSize: '24rpx', fontWeight: 600 }}>添加</Text>
+                  </View>
+                </View>
+                {summaryForm.followUps.length > 0 && (
+                  <View style={{ gap: '8rpx', display: 'flex', flexDirection: 'column' }}>
+                    {summaryForm.followUps.map((item, idx) => (
+                      <View
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12rpx 16rpx',
+                          background: '#FFF9E6',
+                          borderRadius: '8rpx'
+                        }}
+                      >
+                        <Text style={{ fontSize: '24rpx', color: '#E17055' }}>
+                          ⏰ {item}
+                        </Text>
+                        <Text
+                          style={{ fontSize: '24rpx', color: '#B2BEC3', padding: '4rpx 8rpx' }}
+                          onClick={() => removeFollowUp(idx)}
+                        >
+                          ✕
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>备注（可选）</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="其他需要记录的信息..."
+                    placeholderClass={styles.formPlaceholder}
+                    value={summaryForm.notes}
+                    onInput={e => setSummaryForm(prev => ({ ...prev, notes: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+            </View>
+          ),
+          saveVisitSummary,
+          '保存就诊小结'
         )}
       </View>
     );

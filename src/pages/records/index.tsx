@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, Input } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
@@ -9,6 +9,29 @@ import EmptyState from '@/components/EmptyState';
 import { bodyRecords as initialBodyRecords, symptomOptions, moodOptions } from '@/data/recordsData';
 import { formatDate, formatDateCN, parseDate, addDays, diffDays } from '@/utils/dateUtils';
 import type { BodyRecord, PregnancyTest } from '@/types';
+
+const STORAGE_KEY_BODY = 'ivf_body_records';
+const STORAGE_KEY_TESTS = 'ivf_pregnancy_tests';
+
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    const data = Taro.getStorageSync(key);
+    if (data && typeof data === 'string' && data.length > 0) {
+      return JSON.parse(data);
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const saveToStorage = (key: string, data: any) => {
+  try {
+    Taro.setStorageSync(key, JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+};
 
 type TabType = 'diary' | 'test' | 'trend';
 
@@ -23,8 +46,16 @@ const abnormalSymptoms = ['严重腹胀', '剧烈腹痛', '阴道出血', '呼�
 const RecordsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('diary');
 
-  const [recordsList, setRecordsList] = useState<BodyRecord[]>(initialBodyRecords);
-  const [testsList, setTestsList] = useState<PregnancyTest[]>([]);
+  const [recordsList, setRecordsList] = useState<BodyRecord[]>(() => loadFromStorage(STORAGE_KEY_BODY, initialBodyRecords));
+  const [testsList, setTestsList] = useState<PregnancyTest[]>(() => loadFromStorage(STORAGE_KEY_TESTS, []));
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_BODY, recordsList);
+  }, [recordsList]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_TESTS, testsList);
+  }, [testsList]);
 
   const [temperature, setTemperature] = useState<string>('36.7');
   const [weight, setWeight] = useState<string>('52.3');

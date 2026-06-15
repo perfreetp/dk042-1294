@@ -834,3 +834,32 @@
     opacity: 0.85;
   }
 }
+
+// 就诊小结
+.generateSummaryBtn {
+  width: 100%;
+  padding: 24rpx;
+  border-radius: $radius-xl;
+  background: linear-gradient(135deg, #6EC6B7 0%, #A8DDD3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: $spacing-md;
+  box-shadow: 0 8rpx 24rpx rgba(110, 198, 183, 0.3);
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.summaryCardPreview {
+  background: #fff;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+  border-left: 6rpx solid $color-secondary;
+
+  &:active {
+    background: #F7F8FA;
+  }
+}

@@ -95,6 +95,7 @@ export interface MedicalDocument {
   hospital: string;
   imageUrl?: string;
   notes?: string;
+  relatedExpenseId?: string;
 }
 
 // 费用记录
@@ -104,7 +105,8 @@ export interface ExpenseRecord {
   category: 'examination' | 'medication' | 'surgery' | 'other';
   amount: number;
   description: string;
-  hospital?: string;
+  hospital: string;
+  relatedDocumentId?: string;
 }
 
 // 问题卡片
@@ -115,6 +117,22 @@ export interface QuestionCard {
   date: string;
   isAsked: boolean;
   doctor?: string;
+  answerDate?: string;
+}
+
+// 就诊小结
+export interface VisitSummary {
+  id: string;
+  date: string;
+  hospital: string;
+  doctor?: string;
+  questions: Array<{
+    question: string;
+    answer?: string;
+    doctor?: string;
+  }>;
+  followUps: string[];
+  notes?: string;
 }
 
 // 消息类型
