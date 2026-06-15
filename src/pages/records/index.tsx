@@ -92,14 +92,13 @@ const RecordsPage: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
+  const createTodayRecord = (): BodyRecord => {
     const hasAbnormal = selectedSymptoms.some(s => abnormalSymptoms.includes(s)) || isAbnormal;
     const moodInfo = moodOptions.find(m => m.level === selectedMood) || moodOptions[1];
-
     const tempNum = parseFloat(temperature);
     const weightNum = parseFloat(weight);
 
-    const newRecord: BodyRecord = {
+    return {
       id: `br-u${Date.now()}`,
       date: todayStr,
       temperature: !isNaN(tempNum) ? tempNum : undefined,
@@ -110,15 +109,48 @@ const RecordsPage: React.FC = () => {
       notes: notes.trim() || undefined,
       isAbnormal: hasAbnormal
     };
+  };
 
-    setRecordsList(prev => [newRecord, ...prev]);
+  const performSave = (mode: 'append' | 'overwrite') => {
+    const record = createTodayRecord();
 
+    if (mode === 'overwrite') {
+      setRecordsList(prev => {
+        const filtered = prev.filter(r => r.date !== todayStr);
+        return [record, ...filtered];
+      });
+    } else {
+      setRecordsList(prev => [record, ...prev]);
+    }
+
+    const hasAbnormal = record.isAbnormal;
     Taro.showToast({
-      title: hasAbnormal ? '已保存并标记异常！' : '记录已保存',
+      title: mode === 'overwrite'
+        ? (hasAbnormal ? '已覆盖今日记录并标记异常！' : '已覆盖今日记录')
+        : (hasAbnormal ? '已保存并标记异常！' : '记录已保存'),
       icon: 'none'
     });
 
     setIsAbnormal(false);
+  };
+
+  const handleSave = () => {
+    const todayRecord = recordsList.find(r => r.date === todayStr);
+
+    if (todayRecord) {
+      Taro.showActionSheet({
+        itemList: ['覆盖今日记录', '新增一条记录'],
+        success: (res) => {
+          if (res.tapIndex === 0) {
+            performSave('overwrite');
+          } else if (res.tapIndex === 1) {
+            performSave('append');
+          }
+        }
+      });
+    } else {
+      performSave('append');
+    }
   };
 
   const markAbnormal = () => {
@@ -285,26 +317,32 @@ const RecordsPage: React.FC = () => {
               <Text className={styles.vitalIcon}>🌡️</Text>
               基础体温
             </Text>
-            <View>
-              <Text className={styles.vitalValue}>
-                {temperature}
-                <Text className={styles.vitalUnit}>°C</Text>
-              </Text>
+            <View className={styles.vitalValueRow}>
+              <Input
+                className={styles.vitalInput}
+                type='digit'
+                value={temperature}
+                onInput={e => setTemperature(e.detail.value)}
+              />
+              <Text className={styles.vitalUnit}>°C</Text>
             </View>
-            <Text className={styles.vitalTrend}>↗️ 比昨天高0.1°C</Text>
+            <Text className={styles.vitalTrend}>点击数字可直接编辑</Text>
           </View>
           <View className={styles.vitalItem}>
             <Text className={styles.vitalLabel}>
               <Text className={styles.vitalIcon}>⚖️</Text>
               当前体重
             </Text>
-            <View>
-              <Text className={styles.vitalValue}>
-                {weight}
-                <Text className={styles.vitalUnit}>kg</Text>
-              </Text>
+            <View className={styles.vitalValueRow}>
+              <Input
+                className={styles.vitalInput}
+                type='digit'
+                value={weight}
+                onInput={e => setWeight(e.detail.value)}
+              />
+              <Text className={styles.vitalUnit}>kg</Text>
             </View>
-            <Text className={styles.vitalTrend} style={{ color: '#FF8BA7' }}>↗️ +0.2kg</Text>
+            <Text className={styles.vitalTrend} style={{ color: '#FF8BA7' }}>点击数字可直接编辑</Text>
           </View>
         </View>
 

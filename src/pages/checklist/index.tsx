@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, Input } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
@@ -41,14 +41,47 @@ const expenseCategoryConfig: Record<string, { bg: string; color: string; label: 
   other: { bg: '#FFF0F3', color: '#FF8BA7', label: '其他', icon: '💳' }
 };
 
+const STORAGE_KEY_DOCS = 'ivf_medical_documents';
+const STORAGE_KEY_EXPENSES = 'ivf_expense_records';
+
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    const data = Taro.getStorageSync(key);
+    if (data && typeof data === 'string' && data.length > 0) {
+      return JSON.parse(data);
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const saveToStorage = (key: string, data: any) => {
+  try {
+    Taro.setStorageSync(key, JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+};
+
 const ChecklistPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('todo');
   const [todos, setTodos] = useState<TodoItem[]>(todoList);
   const [medications, setMedications] = useState(medicationList);
-  const [documents, setDocuments] = useState<MedicalDocument[]>(documentList);
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(expenseList);
+  const [documents, setDocuments] = useState<MedicalDocument[]>(() => loadFromStorage(STORAGE_KEY_DOCS, documentList));
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadFromStorage(STORAGE_KEY_EXPENSES, expenseList));
   const [questions, setQuestions] = useState<QuestionCard[]>(questionList);
   const [docCategory, setDocCategory] = useState<string>('all');
+  const [expenseCategory, setExpenseCategory] = useState<string>('all');
+  const [expenseHospital, setExpenseHospital] = useState<string>('all');
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_DOCS, documents);
+  }, [documents]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_EXPENSES, expenses);
+  }, [expenses]);
 
   const todayStr = formatDate(new Date());
 
@@ -91,6 +124,11 @@ const ChecklistPage: React.FC = () => {
 
   // 问题表单
   const [newQuestion, setNewQuestion] = useState('');
+  const [isVisitMode, setIsVisitMode] = useState(false);
+  const [showAnswerModal, setShowAnswerModal] = useState(false);
+  const [answeringId, setAnsweringId] = useState<string>('');
+  const [answerText, setAnswerText] = useState('');
+  const [answerDoctor, setAnswerDoctor] = useState('');
 
   // ==========================================
   // 待办分组
@@ -121,17 +159,31 @@ const ChecklistPage: React.FC = () => {
   const activeMedications = medications.filter(m => !m.endDate || parseDate(m.endDate) >= new Date()).length;
 
   // ==========================================
-  // 费用统计（基于 state）
+  // 费用统计（基于筛选后的结果）
   // ==========================================
+  const hospitalOptions = useMemo(() => {
+    const set = new Set<string>();
+    expenses.forEach(e => e.hospital && set.add(e.hospital));
+    return Array.from(set);
+  }, [expenses]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      if (expenseCategory !== 'all' && e.category !== expenseCategory) return false;
+      if (expenseHospital !== 'all' && e.hospital !== expenseHospital) return false;
+      return true;
+    });
+  }, [expenses, expenseCategory, expenseHospital]);
+
   const totalExpense = useMemo(() =>
-    expenses.reduce((sum, e) => sum + e.amount, 0)
-  , [expenses]);
+    filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
+  , [filteredExpenses]);
 
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = { examination: 0, medication: 0, surgery: 0, other: 0 };
-    expenses.forEach(e => { map[e.category] += e.amount; });
+    filteredExpenses.forEach(e => { map[e.category] += e.amount; });
     return map;
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   // ==========================================
   // 单据过滤（基于 state）
@@ -229,16 +281,12 @@ const ChecklistPage: React.FC = () => {
       Taro.showToast({ title: '请输入有效金额', icon: 'none' });
       return;
     }
-    if (!newExpense.description) {
-      Taro.showToast({ title: '请填写费用说明', icon: 'none' });
-      return;
-    }
     const exp: ExpenseRecord = {
       id: `exp-u${Date.now()}`,
       date: newExpense.date,
       category: newExpense.category,
       amount: amt,
-      description: newExpense.description,
+      description: newExpense.description || expenseCategoryConfig[newExpense.category].label,
       hospital: newExpense.hospital || undefined
     };
     setExpenses(prev => [exp, ...prev]);
@@ -274,6 +322,53 @@ const ChecklistPage: React.FC = () => {
       });
       return { ...(q as any), isReminded: reminded };
     }));
+  };
+
+  const openAnswerModal = (id: string) => {
+    setAnsweringId(id);
+    setAnswerText('');
+    setAnswerDoctor('');
+    setShowAnswerModal(true);
+  };
+
+  const saveAnswer = () => {
+    if (!answeringId) return;
+    setQuestions(prev => prev.map(q => {
+      if (q.id !== answeringId) return q;
+      return {
+        ...q,
+        isAsked: true,
+        answer: answerText.trim() || undefined,
+        doctor: answerDoctor.trim() || undefined,
+        answerDate: formatDateCN(new Date())
+      };
+    }));
+    setShowAnswerModal(false);
+    setAnsweringId('');
+    Taro.showToast({ title: '已标记为已咨询', icon: 'success' });
+  };
+
+  const markAllRemindedAsAsked = () => {
+    const remindedCount = questions.filter(q => !q.isAsked && (q as any).isReminded).length;
+    if (remindedCount === 0) {
+      Taro.showToast({ title: '暂无就诊提醒问题', icon: 'none' });
+      return;
+    }
+    Taro.showModal({
+      title: '一键标记已咨询',
+      content: `确定将 ${remindedCount} 个就诊提醒问题全部标记为已咨询吗？`,
+      confirmText: '全部标记',
+      confirmColor: '#6EC6B7',
+      success: (res) => {
+        if (res.confirm) {
+          setQuestions(prev => prev.map(q => {
+            if (q.isAsked || !(q as any).isReminded) return q;
+            return { ...q, isAsked: true, answerDate: formatDateCN(new Date()) };
+          }));
+          Taro.showToast({ title: '已全部标记为已咨询', icon: 'success' });
+        }
+      }
+    });
   };
 
   // ==========================================
@@ -710,9 +805,54 @@ const ChecklistPage: React.FC = () => {
               </View>
             )}
           </View>
+          {(expenseCategory !== 'all' || expenseHospital !== 'all') && (
+            <Text style={{ fontSize: '22rpx', opacity: 0.8, marginTop: '12rpx', display: 'block' }}>
+              🔍 当前为筛选结果（共 {filteredExpenses.length} 条）
+            </Text>
+          )}
         </View>
 
-        {expenses.slice().sort((a, b) => b.date.localeCompare(a.date)).map(exp => {
+        {/* 类别筛选 */}
+        <ScrollView scrollX className={styles.filterRow} showScrollbar={false}>
+          <View
+            className={classnames(styles.filterChip, expenseCategory === 'all' && styles.active)}
+            onClick={() => setExpenseCategory('all')}
+          >
+            全部类别
+          </View>
+          {Object.entries(expenseCategoryConfig).map(([key, cfg]) => (
+            <View
+              key={key}
+              className={classnames(styles.filterChip, expenseCategory === key && styles.active)}
+              onClick={() => setExpenseCategory(key)}
+            >
+              {cfg.icon} {cfg.label}
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* 医院筛选 */}
+        {hospitalOptions.length > 0 && (
+          <ScrollView scrollX className={styles.filterRow} showScrollbar={false}>
+            <View
+              className={classnames(styles.filterChip, styles.filterChipSecondary, expenseHospital === 'all' && styles.active)}
+              onClick={() => setExpenseHospital('all')}
+            >
+              全部医院
+            </View>
+            {hospitalOptions.map(h => (
+              <View
+                key={h}
+                className={classnames(styles.filterChip, styles.filterChipSecondary, expenseHospital === h && styles.active)}
+                onClick={() => setExpenseHospital(h)}
+              >
+                🏥 {h}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        {filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date)).map(exp => {
           const config = expenseCategoryConfig[exp.category];
           return (
             <View key={exp.id} className={styles.expenseItem}>
@@ -841,26 +981,115 @@ const ChecklistPage: React.FC = () => {
   // ==========================================
   const renderQuestionTab = () => {
     const { unanswered, answered } = questionGroups;
+    const remindedUnanswered = unanswered.filter(q => (q as any).isReminded);
+    const normalUnanswered = unanswered.filter(q => !(q as any).isReminded);
 
     return (
       <View>
         <View className={styles.summaryCard} style={{
-          background: 'linear-gradient(135deg, #8B5CF6 0%, #C4B5FD 100%)'
+          background: isVisitMode
+            ? 'linear-gradient(135deg, #6EC6B7 0%, #A8DDD3 100%)'
+            : 'linear-gradient(135deg, #8B5CF6 0%, #C4B5FD 100%)'
         }}>
-          <Text className={styles.summaryTitle}>💭 想问医生的问题</Text>
-          <View style={{ display: 'flex', alignItems: 'baseline', marginBottom: '16rpx' }}>
-            <Text className={styles.summaryAmount}>{unanswered.length}</Text>
-            <Text style={{ fontSize: '28rpx', color: '#fff', opacity: 0.85, marginLeft: '8rpx' }}>
-              个待提问 · {answered.length} 个已回答
-              {remindedQuestions > 0 && ` · ${remindedQuestions}个就诊提醒`}
-            </Text>
+          <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text className={styles.summaryTitle}>
+                {isVisitMode ? '🏥 今日就诊模式' : '💭 想问医生的问题'}
+              </Text>
+              <View style={{ display: 'flex', alignItems: 'baseline', marginBottom: '12rpx' }}>
+                <Text className={styles.summaryAmount}>
+                  {isVisitMode ? remindedUnanswered.length : unanswered.length}
+                </Text>
+                <Text style={{ fontSize: '28rpx', color: '#fff', opacity: 0.85, marginLeft: '8rpx' }}>
+                  {isVisitMode
+                    ? `个就诊提醒问题 · 共${unanswered.length}个待提问`
+                    : `个待提问 · ${answered.length} 个已回答`}
+                </Text>
+              </View>
+              <Text style={{ fontSize: '24rpx', opacity: 0.85, lineHeight: 1.5 }}>
+                {isVisitMode
+                  ? '📋 逐个问医生，问完点「已咨询」标记一下'
+                  : '💡 就诊时带着这些问题问医生，避免忘记哦~'}
+              </Text>
+            </View>
+            <View
+              className={isVisitMode ? styles.visitModeBtnActive : styles.visitModeBtn}
+              onClick={() => setIsVisitMode(!isVisitMode)}
+            >
+              <Text style={{ fontSize: '24rpx', fontWeight: 600 }}>
+                {isVisitMode ? '退出就诊' : '进入就诊'}
+              </Text>
+            </View>
           </View>
-          <Text style={{ fontSize: '24rpx', opacity: 0.85, lineHeight: 1.5 }}>
-            💡 就诊时带着这些问题问医生，避免忘记哦~
-          </Text>
         </View>
 
-        {unanswered.length > 0 && (
+        {isVisitMode && remindedUnanswered.length > 0 && (
+          <View style={{ marginTop: '8rpx' }}>
+            <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12rpx' }}>
+              <View className={styles.groupHeader} style={{ marginBottom: 0, padding: 0 }}>
+                <Text className={styles.groupTitle} style={{ color: '#E17055' }}>🔔 就诊提醒（优先问）</Text>
+                <Text className={styles.groupCount}>{remindedUnanswered.length} 个</Text>
+              </View>
+              <Text
+                style={{ fontSize: '22rpx', color: '#6EC6B7', fontWeight: 500 }}
+                onClick={markAllRemindedAsAsked}
+              >
+                一键全部已咨询
+              </Text>
+            </View>
+            {remindedUnanswered.map(q => (
+              <View key={q.id} className={classnames(styles.questionCard, styles.unanswered, styles.visitQuestion)}>
+                <View className={styles.questionHeader}>
+                  <Text className={styles.questionText} style={{ marginBottom: 0 }}>{q.question}</Text>
+                  <View className={styles.questionStatus} style={{ backgroundColor: '#FFF9E6' }}>
+                    <Text className={styles.questionStatusText} style={{ color: '#F39C12' }}>待咨询</Text>
+                  </View>
+                </View>
+                <View className={styles.questionFooter}>
+                  <Text className={styles.questionDate}>{q.date}</Text>
+                  <View className={styles.visitActionBtn} onClick={() => openAnswerModal(q.id)}>
+                    <Text style={{ color: '#fff', fontSize: '24rpx', fontWeight: 600 }}>✓ 已咨询</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {isVisitMode && normalUnanswered.length > 0 && (
+          <View style={{ marginTop: '16rpx' }}>
+            <View className={styles.groupHeader}>
+              <Text className={styles.groupTitle}>📝 其他待咨询</Text>
+              <Text className={styles.groupCount}>{normalUnanswered.length} 个</Text>
+            </View>
+            {normalUnanswered.map(q => (
+              <View key={q.id} className={classnames(styles.questionCard, styles.unanswered)}>
+                <View className={styles.questionHeader}>
+                  <Text className={styles.questionText} style={{ marginBottom: 0 }}>{q.question}</Text>
+                  <View className={styles.questionStatus} style={{ backgroundColor: '#FFF9E6' }}>
+                    <Text className={styles.questionStatusText} style={{ color: '#F39C12' }}>待咨询</Text>
+                  </View>
+                </View>
+                <View className={styles.questionFooter}>
+                  <Text className={styles.questionDate}>{q.date}</Text>
+                  <View style={{ display: 'flex', gap: '16rpx', alignItems: 'center' }}>
+                    <Text
+                      style={{ fontSize: '24rpx', color: '#FF8BA7' }}
+                      onClick={() => toggleQuestionReminder(q.id)}
+                    >
+                      � 设为提醒
+                    </Text>
+                    <View className={styles.visitActionBtnSecondary} onClick={() => openAnswerModal(q.id)}>
+                      <Text style={{ color: '#6EC6B7', fontSize: '24rpx', fontWeight: 500 }}>已咨询</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {!isVisitMode && unanswered.length > 0 && (
           <View>
             <View className={styles.groupHeader}>
               <Text className={styles.groupTitle}>📝 待咨询</Text>
@@ -892,7 +1121,7 @@ const ChecklistPage: React.FC = () => {
           </View>
         )}
 
-        {answered.length > 0 && (
+        {!isVisitMode && answered.length > 0 && (
           <View style={{ marginTop: '8rpx' }}>
             <View className={styles.groupHeader}>
               <Text className={styles.groupTitle}>✅ 已解答</Text>
@@ -972,6 +1201,51 @@ const ChecklistPage: React.FC = () => {
           ),
           saveQuestion,
           '加入待咨询'
+        )}
+
+        {/* 记录医生回复模态 */}
+        {renderModal(
+          showAnswerModal,
+          '💬 记录医生回复',
+          () => setShowAnswerModal(false),
+          (
+            <View>
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>医生姓名（可选）</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：张医生"
+                    placeholderClass={styles.formPlaceholder}
+                    value={answerDoctor}
+                    onInput={e => setAnswerDoctor(e.detail.value)}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>医生回复内容</Text>
+                <View className={styles.formTextarea}>
+                  <Input
+                    placeholder="记录医生的回答和建议..."
+                    placeholderClass={styles.formPlaceholder}
+                    value={answerText}
+                    onInput={e => setAnswerText(e.detail.value)}
+                    style={{
+                      width: '100%',
+                      fontSize: '28rpx',
+                      minHeight: '200rpx',
+                      lineHeight: '1.6'
+                    }}
+                  />
+                </View>
+              </View>
+              <Text style={{ fontSize: '22rpx', color: '#B2BEC3' }}>
+                💡 保存后问题将移到「已解答」区
+              </Text>
+            </View>
+          ),
+          saveAnswer,
+          '标记为已咨询'
         )}
       </View>
     );

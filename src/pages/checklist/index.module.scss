@@ -740,3 +740,97 @@
   border-radius: $radius-lg;
   padding: $spacing-xl;
 }
+
+// 筛选行
+.filterRow {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 4rpx;
+}
+
+.filterChip {
+  flex-shrink: 0;
+  padding: 10rpx 24rpx;
+  border-radius: $radius-round;
+  background: #F7F8FA;
+  border: 2rpx solid transparent;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary-lighter;
+    color: $color-primary;
+    border-color: $color-primary;
+  }
+
+  &.filterChipSecondary {
+    &.active {
+      background: #E8F8F5;
+      color: $color-secondary;
+      border-color: $color-secondary;
+    }
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+// 就诊模式
+.visitModeBtn {
+  padding: 12rpx 24rpx;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: $radius-round;
+  color: #fff;
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  margin-left: $spacing-md;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.visitModeBtnActive {
+  padding: 12rpx 24rpx;
+  background: #fff;
+  border-radius: $radius-round;
+  color: $color-secondary;
+  flex-shrink: 0;
+  margin-left: $spacing-md;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.visitQuestion {
+  border-left: 6rpx solid #F39C12;
+  background: linear-gradient(90deg, #FFF9E6 0%, #FFFFFF 20%);
+}
+
+.visitActionBtn {
+  padding: 10rpx 24rpx;
+  background: linear-gradient(135deg, $color-secondary 0%, $color-secondary-light 100%);
+  border-radius: $radius-round;
+  box-shadow: 0 4rpx 12rpx rgba(110, 198, 183, 0.3);
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.visitActionBtnSecondary {
+  padding: 10rpx 20rpx;
+  background: #E8F8F5;
+  border-radius: $radius-round;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
