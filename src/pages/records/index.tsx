@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, ScrollView, Input } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
 
 import EmptyState from '@/components/EmptyState';
 
-import { bodyRecords, pregnancyTests, symptomOptions, moodOptions } from '@/data/recordsData';
-import { formatDate, parseDate, addDays, diffDays } from '@/utils/dateUtils';
+import { bodyRecords as initialBodyRecords, symptomOptions, moodOptions } from '@/data/recordsData';
+import { formatDate, formatDateCN, parseDate, addDays, diffDays } from '@/utils/dateUtils';
 import type { BodyRecord, PregnancyTest } from '@/types';
 
 type TabType = 'diary' | 'test' | 'trend';
@@ -23,7 +23,9 @@ const abnormalSymptoms = ['严重腹胀', '剧烈腹痛', '阴道出血', '呼�
 const RecordsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('diary');
 
-  // 今日记录状态
+  const [recordsList, setRecordsList] = useState<BodyRecord[]>(initialBodyRecords);
+  const [testsList, setTestsList] = useState<PregnancyTest[]>([]);
+
   const [temperature, setTemperature] = useState<string>('36.7');
   const [weight, setWeight] = useState<string>('52.3');
   const [selectedMood, setSelectedMood] = useState<number>(4);
@@ -31,11 +33,24 @@ const RecordsPage: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [isAbnormal, setIsAbnormal] = useState<boolean>(false);
 
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [newTest, setNewTest] = useState<{
+    testType: 'urine' | 'blood';
+    result: 'positive' | 'negative' | 'pending';
+    hcgValue: string;
+    notes: string;
+    daysAfterTransfer: string;
+  }>({
+    testType: 'urine',
+    result: 'pending',
+    hcgValue: '',
+    notes: '',
+    daysAfterTransfer: ''
+  });
+
   const todayStr = formatDate(new Date());
 
-  // 验孕相关
   const transferDate = useMemo(() => {
-    // 假设计划移植日
     const base = new Date();
     return addDays(base, 11);
   }, []);
@@ -48,21 +63,25 @@ const RecordsPage: React.FC = () => {
 
   const daysUntilTest = Math.max(0, 14 - daysAfterTransfer);
 
-  // 模拟验孕数据
-  const mockTests: PregnancyTest[] = [];
-  if (daysAfterTransfer > 0) {
-    for (let i = 10; i <= Math.min(daysAfterTransfer, 14); i++) {
-      mockTests.push({
-        id: `test-${i}`,
-        date: formatDate(addDays(transferDate, i)),
-        daysAfterTransfer: i,
-        result: i < 12 ? 'negative' : i === 12 ? 'pending' : 'positive',
-        testType: i >= 13 ? 'blood' : 'urine',
-        hcgValue: i >= 13 ? (i - 12) * 120 : undefined,
-        notes: i === 14 ? '血检确认怀孕，HCG值良好' : undefined
-      });
+  const allTests = useMemo(() => {
+    const baseTests: PregnancyTest[] = [];
+    if (daysAfterTransfer > 0) {
+      for (let i = 10; i <= Math.min(daysAfterTransfer, 14); i++) {
+        baseTests.push({
+          id: `test-base-${i}`,
+          date: formatDate(addDays(transferDate, i)),
+          daysAfterTransfer: i,
+          result: i < 12 ? 'negative' : i === 12 ? 'pending' : 'positive',
+          testType: i >= 13 ? 'blood' : 'urine',
+          hcgValue: i >= 13 ? (i - 12) * 120 : undefined,
+          notes: i === 14 ? '血检确认怀孕，HCG值良好' : undefined
+        });
+      }
     }
-  }
+    const combined = [...baseTests, ...testsList];
+    combined.sort((a, b) => b.daysAfterTransfer - a.daysAfterTransfer);
+    return combined;
+  }, [daysAfterTransfer, transferDate, testsList]);
 
   const toggleSymptom = (symptom: string) => {
     setSelectedSymptoms(prev => {
@@ -74,12 +93,32 @@ const RecordsPage: React.FC = () => {
   };
 
   const handleSave = () => {
-    const hasAbnormal = selectedSymptoms.some(s => abnormalSymptoms.includes(s));
-    console.log('[Records] 保存记录:', { temperature, weight, selectedMood, selectedSymptoms, notes, hasAbnormal });
+    const hasAbnormal = selectedSymptoms.some(s => abnormalSymptoms.includes(s)) || isAbnormal;
+    const moodInfo = moodOptions.find(m => m.level === selectedMood) || moodOptions[1];
+
+    const tempNum = parseFloat(temperature);
+    const weightNum = parseFloat(weight);
+
+    const newRecord: BodyRecord = {
+      id: `br-u${Date.now()}`,
+      date: todayStr,
+      temperature: !isNaN(tempNum) ? tempNum : undefined,
+      weight: !isNaN(weightNum) ? weightNum : undefined,
+      symptoms: [...selectedSymptoms],
+      mood: moodInfo.label,
+      moodLevel: selectedMood,
+      notes: notes.trim() || undefined,
+      isAbnormal: hasAbnormal
+    };
+
+    setRecordsList(prev => [newRecord, ...prev]);
+
     Taro.showToast({
       title: hasAbnormal ? '已保存并标记异常！' : '记录已保存',
       icon: 'none'
     });
+
+    setIsAbnormal(false);
   };
 
   const markAbnormal = () => {
@@ -101,45 +140,99 @@ const RecordsPage: React.FC = () => {
     Taro.showActionSheet({
       itemList: ['尿检验孕', '抽血HCG'],
       success: (res) => {
-        Taro.showToast({
-          title: `添加${res.tapIndex === 0 ? '尿检' : '血检'}记录`,
-          icon: 'none'
+        const chosenType = res.tapIndex === 0 ? 'urine' : 'blood';
+        setNewTest({
+          testType: chosenType,
+          result: 'pending',
+          hcgValue: chosenType === 'blood' ? '' : '',
+          notes: '',
+          daysAfterTransfer: daysAfterTransfer > 0 ? String(daysAfterTransfer) : ''
         });
+        setShowTestModal(true);
       }
     });
   };
 
-  // 趋势数据 - 最近7天
+  const saveTest = () => {
+    const days = parseInt(newTest.daysAfterTransfer);
+    if (!days || days <= 0) {
+      Taro.showToast({ title: '请填写移植后天数', icon: 'none' });
+      return;
+    }
+
+    const testRecord: PregnancyTest = {
+      id: `test-u${Date.now()}`,
+      date: formatDate(addDays(transferDate, days)),
+      daysAfterTransfer: days,
+      testType: newTest.testType,
+      result: newTest.result,
+      hcgValue: newTest.testType === 'blood' && newTest.hcgValue ? parseFloat(newTest.hcgValue) : undefined,
+      notes: newTest.notes.trim() || undefined
+    };
+
+    setTestsList(prev => [testRecord, ...prev]);
+    setShowTestModal(false);
+    Taro.showToast({
+      title: newTest.result === 'positive' ? '🎉 恭喜！好孕记录已保存' : '验孕记录已保存',
+      icon: 'none'
+    });
+  };
+
+  const renderModal = (
+    visible: boolean,
+    title: string,
+    onClose: () => void,
+    content: React.ReactNode,
+    onSubmit: () => void,
+    submitText: string = '保存'
+  ) => {
+    if (!visible) return null;
+    return (
+      <View className={styles.modalMask} onClick={onClose}>
+        <View className={styles.modalSheet} onClick={e => e.stopPropagation()}>
+          <View className={styles.modalHeader}>
+            <Text className={styles.modalTitle}>{title}</Text>
+            <View className={styles.modalClose} onClick={onClose}>✕</View>
+          </View>
+          <View className={styles.modalBody}>{content}</View>
+          <View className={styles.modalFooter}>
+            <View className={styles.cancelBtn} onClick={onClose}><Text>取消</Text></View>
+            <View className={styles.submitBtn} onClick={onSubmit}><Text>{submitText}</Text></View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const trendDays = 7;
   const tempTrendData = useMemo(() => {
     const data = [];
     for (let i = trendDays - 1; i >= 0; i--) {
       const date = addDays(new Date(), -i);
-      const record = bodyRecords.find(r => r.date === formatDate(date));
+      const record = recordsList.find(r => r.date === formatDate(date));
       data.push({
         date,
         label: `${date.getMonth() + 1}/${date.getDate()}`,
-        value: record?.temperature || (36.5 + Math.random() * 0.3).toFixed(1)
+        value: record?.temperature ? String(record.temperature) : (36.5 + Math.random() * 0.3).toFixed(1)
       });
     }
     return data;
-  }, []);
+  }, [recordsList]);
 
   const weightTrendData = useMemo(() => {
     const data = [];
     for (let i = trendDays - 1; i >= 0; i--) {
       const date = addDays(new Date(), -i);
-      const record = bodyRecords.find(r => r.date === formatDate(date));
+      const record = recordsList.find(r => r.date === formatDate(date));
       data.push({
         date,
         label: `${date.getMonth() + 1}/${date.getDate()}`,
-        value: record?.weight || (51.5 + Math.random() * 1).toFixed(1)
+        value: record?.weight ? String(record.weight) : (51.5 + Math.random() * 1).toFixed(1)
       });
     }
     return data;
-  }, []);
+  }, [recordsList]);
 
-  // 情绪日历 - 本月
   const moodCalendarData = useMemo(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -155,7 +248,7 @@ const RecordsPage: React.FC = () => {
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = formatDate(new Date(year, month, d));
-      const record = bodyRecords.find(r => r.date === dateStr);
+      const record = recordsList.find(r => r.date === dateStr);
       if (d <= today.getDate()) {
         cells.push({
           day: d,
@@ -168,11 +261,10 @@ const RecordsPage: React.FC = () => {
     }
 
     return cells;
-  }, []);
+  }, [recordsList]);
 
   const renderDiaryTab = () => (
     <View>
-      {/* 今日记录卡片 */}
       <View className={styles.todayCard}>
         <View className={styles.cardHeader}>
           <View>
@@ -187,7 +279,6 @@ const RecordsPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 体温体重 */}
         <View className={styles.vitalsGrid}>
           <View className={styles.vitalItem}>
             <Text className={styles.vitalLabel}>
@@ -217,7 +308,6 @@ const RecordsPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 情绪选择 */}
         <View className={styles.sectionBlock}>
           <Text className={styles.sectionLabel}>
             <Text>😊</Text> 今日心情
@@ -236,7 +326,6 @@ const RecordsPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 症状选择 */}
         <View className={styles.sectionBlock}>
           <Text className={styles.sectionLabel}>
             <Text>🏷️</Text> 身体症状（可多选）
@@ -258,7 +347,6 @@ const RecordsPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 备注 */}
         <View className={styles.sectionBlock}>
           <Text className={styles.sectionLabel}>
             <Text>💭</Text> 想说点什么...
@@ -284,86 +372,192 @@ const RecordsPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 保存按钮 */}
+        {isAbnormal && (
+          <View style={{
+            padding: '16rpx 20rpx',
+            background: '#FFF6F4',
+            borderRadius: '12rpx',
+            marginBottom: '20rpx',
+            border: '2rpx solid #FAB1A0'
+          }}>
+            <Text style={{ fontSize: '24rpx', color: '#E17055', fontWeight: 600 }}>
+              ⚠️ 本条记录将标记为异常
+            </Text>
+          </View>
+        )}
+
         <View className={styles.saveBtn} onClick={handleSave}>
           <Text className={styles.saveBtnText}>💾 保存今日记录</Text>
         </View>
       </View>
 
-      {/* 历史记录 */}
       <View className={styles.historyHeader}>
         <Text className={styles.historyTitle}>
           <Text>📚</Text> 历史记录
         </Text>
-        <Text style={{ fontSize: '24rpx', color: '#B2BEC3' }}>共 {bodyRecords.length} 条</Text>
+        <Text style={{ fontSize: '24rpx', color: '#B2BEC3' }}>共 {recordsList.length} 条</Text>
       </View>
 
       <View className={styles.historyList}>
-        {bodyRecords.map(record => {
-          const date = parseDate(record.date);
-          const moodInfo = moodOptions.find(m => m.level === record.moodLevel) || moodOptions[1];
-          return (
-            <View
-              key={record.id}
-              className={classnames(styles.historyItem, record.isAbnormal && styles.abnormal)}
-            >
-              <View className={styles.historyDate}>
-                <Text className={styles.historyDay}>{date.getDate()}</Text>
-                <Text className={styles.historyMonth}>{date.getMonth() + 1}月</Text>
-              </View>
-              <View className={styles.historyContent}>
-                <View className={styles.historyTop}>
-                  <View className={styles.historyMood}>
-                    <Text className={styles.historyMoodEmoji}>{moodInfo.emoji}</Text>
-                    <Text className={styles.historyMoodText}>{moodInfo.label}</Text>
-                  </View>
-                  {record.isAbnormal && (
-                    <Text className={styles.historyAbnormalTag}>⚠️ 异常</Text>
-                  )}
+        {recordsList.length === 0 ? (
+          <View style={{ padding: '40rpx 0' }}>
+            <EmptyState icon='📝' title='暂无历史记录' description='保存今日记录后，这里会显示你的身体记录时间线' />
+          </View>
+        ) : (
+          recordsList.map(record => {
+            const date = parseDate(record.date);
+            const moodInfo = moodOptions.find(m => m.level === record.moodLevel) || moodOptions[1];
+            return (
+              <View
+                key={record.id}
+                className={classnames(styles.historyItem, record.isAbnormal && styles.abnormal)}
+              >
+                <View className={styles.historyDate}>
+                  <Text className={styles.historyDay}>{date.getDate()}</Text>
+                  <Text className={styles.historyMonth}>{date.getMonth() + 1}月</Text>
                 </View>
-                <View className={styles.historyVitals}>
-                  {record.temperature && (
-                    <Text className={styles.historyVital}>
-                      🌡️ <Text className={styles.historyVitalValue}>{record.temperature}°C</Text>
-                    </Text>
-                  )}
-                  {record.weight && (
-                    <Text className={styles.historyVital}>
-                      ⚖️ <Text className={styles.historyVitalValue}>{record.weight}kg</Text>
-                    </Text>
-                  )}
-                </View>
-                {record.symptoms.length > 0 && (
-                  <View className={styles.historySymptoms}>
-                    {record.symptoms.slice(0, 5).map(s => (
-                      <Text key={s} className={styles.historySymptom}>{s}</Text>
-                    ))}
-                    {record.symptoms.length > 5 && (
-                      <Text className={styles.historySymptom}>+{record.symptoms.length - 5}</Text>
+                <View className={styles.historyContent}>
+                  <View className={styles.historyTop}>
+                    <View className={styles.historyMood}>
+                      <Text className={styles.historyMoodEmoji}>{moodInfo.emoji}</Text>
+                      <Text className={styles.historyMoodText}>{moodInfo.label}</Text>
+                    </View>
+                    {record.isAbnormal && (
+                      <Text className={styles.historyAbnormalTag}>⚠️ 异常</Text>
                     )}
                   </View>
-                )}
-                {record.notes && (
-                  <Text style={{
-                    fontSize: '22rpx',
-                    color: '#86909C',
-                    marginTop: '8rpx',
-                    lineHeight: 1.5
-                  }}>
-                    💭 {record.notes}
-                  </Text>
-                )}
+                  <View className={styles.historyVitals}>
+                    {record.temperature && (
+                      <Text className={styles.historyVital}>
+                        🌡️ <Text className={styles.historyVitalValue}>{record.temperature}°C</Text>
+                      </Text>
+                    )}
+                    {record.weight && (
+                      <Text className={styles.historyVital}>
+                        ⚖️ <Text className={styles.historyVitalValue}>{record.weight}kg</Text>
+                      </Text>
+                    )}
+                  </View>
+                  {record.symptoms.length > 0 && (
+                    <View className={styles.historySymptoms}>
+                      {record.symptoms.slice(0, 5).map(s => (
+                        <Text key={s} className={styles.historySymptom}>{s}</Text>
+                      ))}
+                      {record.symptoms.length > 5 && (
+                        <Text className={styles.historySymptom}>+{record.symptoms.length - 5}</Text>
+                      )}
+                    </View>
+                  )}
+                  {record.notes && (
+                    <Text style={{
+                      fontSize: '22rpx',
+                      color: '#86909C',
+                      marginTop: '8rpx',
+                      lineHeight: 1.5
+                    }}>
+                      💭 {record.notes}
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
+      </View>
+    </View>
+  );
+
+  const testModalContent = (
+    <View>
+      <View className={styles.formGroup}>
+        <Text className={styles.formLabel}>检测方式</Text>
+        <View className={styles.chipGroup}>
+          <View
+            className={classnames(styles.chip, newTest.testType === 'urine' && styles.active)}
+            onClick={() => setNewTest(prev => ({ ...prev, testType: 'urine' }))}
+          >
+            <Text>🧪 尿检验孕</Text>
+          </View>
+          <View
+            className={classnames(styles.chip, newTest.testType === 'blood' && styles.active)}
+            onClick={() => setNewTest(prev => ({ ...prev, testType: 'blood' }))}
+          >
+            <Text>🩸 抽血HCG</Text>
+          </View>
+        </View>
+      </View>
+
+      <View className={styles.formGroup}>
+        <Text className={styles.formLabel}>检测结果</Text>
+        <View className={styles.chipGroup}>
+          <View
+            className={classnames(styles.chip, styles.negative, newTest.result === 'negative' && styles.active)}
+            onClick={() => setNewTest(prev => ({ ...prev, result: 'negative' }))}
+          >
+            <Text>❌ 阴性</Text>
+          </View>
+          <View
+            className={classnames(styles.chip, styles.pending, newTest.result === 'pending' && styles.active)}
+            onClick={() => setNewTest(prev => ({ ...prev, result: 'pending' }))}
+          >
+            <Text>⏳ 待定/灰印</Text>
+          </View>
+          <View
+            className={classnames(styles.chip, styles.positive, newTest.result === 'positive' && styles.active)}
+            onClick={() => setNewTest(prev => ({ ...prev, result: 'positive' }))}
+          >
+            <Text>✅ 阳性</Text>
+          </View>
+        </View>
+      </View>
+
+      <View className={styles.formGroup}>
+        <Text className={styles.formLabel}>移植后天数（Dxx）</Text>
+        <Input
+          className={styles.formInput}
+          type='number'
+          placeholder='例如：12'
+          placeholderClass={styles.formPlaceholder}
+          value={newTest.daysAfterTransfer}
+          onInput={e => setNewTest(prev => ({ ...prev, daysAfterTransfer: e.detail.value }))}
+        />
+        <Text className={styles.inputInlineHint}>
+          今天是移植后第 {daysAfterTransfer} 天（D{daysAfterTransfer}）
+        </Text>
+      </View>
+
+      {newTest.testType === 'blood' && (
+        <View className={styles.formGroup}>
+          <Text className={styles.formLabel}>HCG 数值（mIU/mL）</Text>
+          <Input
+            className={styles.formInput}
+            type='digit'
+            placeholder='例如：356.8（血检必填）'
+            placeholderClass={styles.formPlaceholder}
+            value={newTest.hcgValue}
+            onInput={e => setNewTest(prev => ({ ...prev, hcgValue: e.detail.value }))}
+          />
+          <Text className={styles.inputInlineHint}>
+            💡 一般 D14 > 100 mIU/mL 表示好孕概率高
+          </Text>
+        </View>
+      )}
+
+      <View className={styles.formGroup}>
+        <Text className={styles.formLabel}>备注（可选）</Text>
+        <Input
+          className={styles.formTextarea}
+          placeholder='记录试纸颜色深浅、身体感受等...'
+          placeholderClass={styles.formPlaceholder}
+          value={newTest.notes}
+          onInput={e => setNewTest(prev => ({ ...prev, notes: e.detail.value }))}
+        />
       </View>
     </View>
   );
 
   const renderTestTab = () => (
     <View>
-      {/* 倒计时卡片 */}
       <View className={styles.testCountdown}>
         <Text className={styles.countdownLabel}>距离官方抽血验孕</Text>
         <Text className={styles.countdownDays}>
@@ -380,14 +574,12 @@ const RecordsPage: React.FC = () => {
         </View>
       </View>
 
-      {/* 添加记录按钮 */}
       <View className={styles.addRecordBtn} onClick={handleAddTest}>
         <Text className={styles.addRecordIcon}>➕</Text>
         <Text className={styles.addRecordText}>添加验孕记录</Text>
       </View>
 
-      {/* 验孕记录时间轴 */}
-      {mockTests.length > 0 ? (
+      {allTests.length > 0 ? (
         <View className={styles.testTimeline}>
           <Text style={{
             fontSize: '28rpx',
@@ -396,9 +588,9 @@ const RecordsPage: React.FC = () => {
             marginBottom: '24rpx',
             display: 'block'
           }}>
-            📋 验孕记录
+            📋 验孕记录（{allTests.length}条）
           </Text>
-          {mockTests.map(test => (
+          {allTests.map(test => (
             <View key={test.id} className={styles.testItem}>
               <View className={classnames(
                 styles.testDot,
@@ -451,16 +643,24 @@ const RecordsPage: React.FC = () => {
           <EmptyState
             icon='🤞'
             title='还没有验孕记录'
-            description={`距离官方验孕还有 ${daysUntilTest} 天，请耐心等待好消息！`}
+            description={`距离官方验孕还有 ${daysUntilTest} 天，点击上方按钮添加验孕记录！`}
           />
         </View>
+      )}
+
+      {renderModal(
+        showTestModal,
+        newTest.testType === 'blood' ? '🩸 记录抽血HCG结果' : '🧪 记录尿检验孕结果',
+        () => setShowTestModal(false),
+        testModalContent,
+        saveTest,
+        '保存验孕记录'
       )}
     </View>
   );
 
   const renderTrendTab = () => (
     <View>
-      {/* 体温趋势 */}
       <View className={styles.trendCard}>
         <View className={styles.trendHeader}>
           <Text className={styles.trendTitle}>
@@ -495,7 +695,6 @@ const RecordsPage: React.FC = () => {
         </View>
       </View>
 
-      {/* 体重趋势 */}
       <View className={styles.trendCard}>
         <View className={styles.trendHeader}>
           <Text className={styles.trendTitle}>
@@ -533,7 +732,6 @@ const RecordsPage: React.FC = () => {
         </View>
       </View>
 
-      {/* 情绪日历 */}
       <View className={styles.trendCard}>
         <View className={styles.trendHeader}>
           <Text className={styles.trendTitle}>
@@ -587,7 +785,6 @@ const RecordsPage: React.FC = () => {
   return (
     <ScrollView className={styles.page} scrollY>
       <View className='page-container'>
-        {/* Tab Bar */}
         <View className={styles.tabBar}>
           {tabs.map(tab => (
             <View
@@ -601,7 +798,6 @@ const RecordsPage: React.FC = () => {
           ))}
         </View>
 
-        {/* Tab 内容 */}
         {activeTab === 'diary' && renderDiaryTab()}
         {activeTab === 'test' && renderTestTab()}
         {activeTab === 'trend' && renderTrendTab()}

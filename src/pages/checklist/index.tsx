@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, ScrollView, Input } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
@@ -45,11 +45,56 @@ const ChecklistPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('todo');
   const [todos, setTodos] = useState<TodoItem[]>(todoList);
   const [medications, setMedications] = useState(medicationList);
+  const [documents, setDocuments] = useState<MedicalDocument[]>(documentList);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(expenseList);
+  const [questions, setQuestions] = useState<QuestionCard[]>(questionList);
   const [docCategory, setDocCategory] = useState<string>('all');
 
   const todayStr = formatDate(new Date());
 
+  // ===== 模态框状态 =====
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+
+  // 单据表单
+  const [newDoc, setNewDoc] = useState<{
+    imageUrl: string;
+    title: string;
+    category: MedicalDocument['category'];
+    date: string;
+    hospital: string;
+    notes: string;
+  }>({
+    imageUrl: '',
+    title: '',
+    category: 'report',
+    date: todayStr,
+    hospital: '',
+    notes: ''
+  });
+
+  // 费用表单
+  const [newExpense, setNewExpense] = useState<{
+    amount: string;
+    category: ExpenseRecord['category'];
+    date: string;
+    hospital: string;
+    description: string;
+  }>({
+    amount: '',
+    category: 'examination',
+    date: todayStr,
+    hospital: '',
+    description: ''
+  });
+
+  // 问题表单
+  const [newQuestion, setNewQuestion] = useState('');
+
+  // ==========================================
   // 待办分组
+  // ==========================================
   const todoGroups = useMemo(() => {
     const today: TodoItem[] = [];
     const tomorrow: TodoItem[] = [];
@@ -71,27 +116,48 @@ const ChecklistPage: React.FC = () => {
   }, [todos]);
 
   const pendingTodos = todos.filter(t => !t.completed).length;
-  const unansweredQuestions = questionList.filter(q => !q.isAsked).length;
+  const unansweredQuestions = questions.filter(q => !q.isAsked).length;
+  const remindedQuestions = questions.filter(q => !q.isAsked && (q as any).isReminded).length;
   const activeMedications = medications.filter(m => !m.endDate || parseDate(m.endDate) >= new Date()).length;
 
-  // 费用统计
-  const totalExpense = expenseList.reduce((sum, e) => sum + e.amount, 0);
+  // ==========================================
+  // 费用统计（基于 state）
+  // ==========================================
+  const totalExpense = useMemo(() =>
+    expenses.reduce((sum, e) => sum + e.amount, 0)
+  , [expenses]);
+
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = { examination: 0, medication: 0, surgery: 0, other: 0 };
-    expenseList.forEach(e => { map[e.category] += e.amount; });
+    expenses.forEach(e => { map[e.category] += e.amount; });
     return map;
-  }, []);
+  }, [expenses]);
 
-  // 单据过滤
-  const filteredDocs = docCategory === 'all'
-    ? documentList
-    : documentList.filter(d => d.category === docCategory);
+  // ==========================================
+  // 单据过滤（基于 state）
+  // ==========================================
+  const filteredDocs = useMemo(() =>
+    docCategory === 'all'
+      ? documents
+      : documents.filter(d => d.category === docCategory)
+  , [documents, docCategory]);
 
+  // ==========================================
+  // 问题分组（基于 state）
+  // ==========================================
+  const questionGroups = useMemo(() => {
+    const unanswered = questions.filter(q => !q.isAsked);
+    const answered = questions.filter(q => q.isAsked);
+    return { unanswered, answered };
+  }, [questions]);
+
+  // ==========================================
+  // 交互函数
+  // ==========================================
   const handleTodoToggle = (id: string, completed: boolean) => {
     setTodos(prev => prev.map(t =>
       t.id === id ? { ...t, completed, completedAt: completed ? formatDate(new Date()) : undefined } : t
     ));
-    console.log('[Checklist] 待办状态切换:', id, completed);
   };
 
   const handleMedicationCheck = (medId: string) => {
@@ -106,6 +172,146 @@ const ChecklistPage: React.FC = () => {
     }));
   };
 
+  // ===== 单据：拍照归档 =====
+  const openDocForm = () => {
+    Taro.chooseImage({
+      count: 1,
+      success: (res) => {
+        const filePath = res.tempFilePaths?.[0] || '';
+        setNewDoc(prev => ({ ...prev, imageUrl: filePath }));
+        setShowDocModal(true);
+      },
+      fail: () => {
+        setNewDoc({
+          imageUrl: '', title: '', category: 'report',
+          date: todayStr, hospital: '', notes: ''
+        });
+        setShowDocModal(true);
+      }
+    });
+  };
+
+  const saveDocument = () => {
+    if (!newDoc.title) {
+      Taro.showToast({ title: '请填写单据名称', icon: 'none' });
+      return;
+    }
+    const doc: MedicalDocument = {
+      id: `doc-u${Date.now()}`,
+      title: newDoc.title,
+      category: newDoc.category,
+      date: newDoc.date,
+      hospital: newDoc.hospital || '待补充',
+      imageUrl: newDoc.imageUrl || undefined,
+      notes: newDoc.notes || undefined
+    };
+    setDocuments(prev => [doc, ...prev]);
+    setShowDocModal(false);
+    setNewDoc({
+      imageUrl: '', title: '', category: 'report',
+      date: todayStr, hospital: '', notes: ''
+    });
+    Taro.showToast({ title: '单据归档成功！', icon: 'success' });
+  };
+
+  // ===== 费用：录入流程 =====
+  const openExpenseForm = () => {
+    setNewExpense({
+      amount: '', category: 'examination',
+      date: todayStr, hospital: '', description: ''
+    });
+    setShowExpenseModal(true);
+  };
+
+  const saveExpense = () => {
+    const amt = parseFloat(newExpense.amount);
+    if (!amt || amt <= 0) {
+      Taro.showToast({ title: '请输入有效金额', icon: 'none' });
+      return;
+    }
+    if (!newExpense.description) {
+      Taro.showToast({ title: '请填写费用说明', icon: 'none' });
+      return;
+    }
+    const exp: ExpenseRecord = {
+      id: `exp-u${Date.now()}`,
+      date: newExpense.date,
+      category: newExpense.category,
+      amount: amt,
+      description: newExpense.description,
+      hospital: newExpense.hospital || undefined
+    };
+    setExpenses(prev => [exp, ...prev]);
+    setShowExpenseModal(false);
+    Taro.showToast({ title: '费用已记录！', icon: 'success' });
+  };
+
+  // ===== 问题卡片：新增 =====
+  const saveQuestion = () => {
+    if (!newQuestion.trim()) {
+      Taro.showToast({ title: '请输入问题内容', icon: 'none' });
+      return;
+    }
+    const q: QuestionCard = {
+      id: `q-u${Date.now()}`,
+      question: newQuestion.trim(),
+      date: formatDateCN(new Date()),
+      isAsked: false
+    };
+    setQuestions(prev => [q, ...prev]);
+    setShowQuestionModal(false);
+    setNewQuestion('');
+    Taro.showToast({ title: '已保存到待咨询区', icon: 'success' });
+  };
+
+  const toggleQuestionReminder = (id: string) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id !== id) return q;
+      const reminded = !(q as any).isReminded;
+      Taro.showToast({
+        title: reminded ? '已添加到就诊提醒！' : '已取消就诊提醒',
+        icon: 'none'
+      });
+      return { ...(q as any), isReminded: reminded };
+    }));
+  };
+
+  // ==========================================
+  // 模态框通用渲染函数
+  // ==========================================
+  const renderModal = (
+    visible: boolean,
+    title: string,
+    onClose: () => void,
+    content: React.ReactNode,
+    onSubmit: () => void,
+    submitText: string = '保存'
+  ) => {
+    if (!visible) return null;
+    return (
+      <View className={styles.modalMask} onClick={onClose}>
+        <View className={styles.modalSheet} onClick={e => e.stopPropagation()}>
+          <View className={styles.modalHeader}>
+            <Text className={styles.modalTitle}>{title}</Text>
+            <View className={styles.modalClose} onClick={onClose}>✕</View>
+          </View>
+          {content}
+          <View className={styles.modalFooter}>
+            <View className={styles.cancelBtn} onClick={onClose}>
+              <Text>取消</Text>
+            </View>
+            <View className={styles.submitBtn} onClick={onSubmit}>
+              <Text>{submitText}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // ==========================================
+  // 待办 Tab
+  // ==========================================
   const renderTodoTab = () => {
     const groups = [
       { key: 'today', title: '📌 今日待办', data: todoGroups.today, color: '#FF8BA7' },
@@ -115,7 +321,6 @@ const ChecklistPage: React.FC = () => {
 
     return (
       <View>
-        {/* 完成进度 */}
         <View className={classnames(styles.summaryCard)} style={{
           background: 'linear-gradient(135deg, #6EC6B7 0%, #A8DDD3 100%)'
         }}>
@@ -187,6 +392,9 @@ const ChecklistPage: React.FC = () => {
     );
   };
 
+  // ==========================================
+  // 用药 Tab
+  // ==========================================
   const renderMedicationTab = () => (
     <View>
       <View className={styles.summaryCard} style={{
@@ -279,6 +487,9 @@ const ChecklistPage: React.FC = () => {
     </View>
   );
 
+  // ==========================================
+  // 单据 Tab（支持拍照+保存）
+  // ==========================================
   const renderDocumentTab = () => {
     const categories = [
       { key: 'all', label: '全部' },
@@ -307,9 +518,24 @@ const ChecklistPage: React.FC = () => {
             const config = docCategoryConfig[doc.category];
             return (
               <View key={doc.id} className={styles.docCard}>
-                <View className={styles.docIconWrap} style={{ backgroundColor: config.bg }}>
-                  <Text className={styles.docIcon}>{config.icon}</Text>
-                </View>
+                {(doc as any).imageUrl ? (
+                  <View
+                    className={styles.docIconWrap}
+                    style={{
+                      backgroundImage: `url(${(doc as any).imageUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      width: '100%',
+                      height: '200rpx',
+                      borderRadius: '12rpx',
+                      marginBottom: '16rpx'
+                    }}
+                  />
+                ) : (
+                  <View className={styles.docIconWrap} style={{ backgroundColor: config.bg }}>
+                    <Text className={styles.docIcon}>{config.icon}</Text>
+                  </View>
+                )}
                 <Text className={styles.docTitle}>{doc.title}</Text>
                 <View className={styles.docMeta}>
                   <Text>🏥</Text>
@@ -329,7 +555,8 @@ const ChecklistPage: React.FC = () => {
                     lineHeight: 1.5,
                     background: '#F7F8FA',
                     padding: '8rpx 12rpx',
-                    borderRadius: '8rpx'
+                    borderRadius: '8rpx',
+                    marginTop: '8rpx'
                   }}>
                     {doc.notes}
                   </Text>
@@ -340,26 +567,126 @@ const ChecklistPage: React.FC = () => {
 
           <View
             className={classnames(styles.docCard, styles.docAddCard)}
-            onClick={() => Taro.chooseImage({
-              count: 1,
-              success: () => Taro.showToast({ title: '上传成功', icon: 'success' })
-            })}
+            onClick={openDocForm}
           >
             <Text className={styles.docAddIcon}>📷</Text>
             <Text className={styles.docAddText}>拍照归档</Text>
           </View>
         </View>
+
+        {/* 单据表单模态 */}
+        {renderModal(
+          showDocModal,
+          '📄 新增医院单据',
+          () => setShowDocModal(false),
+          (
+            <View>
+              <View
+                className={styles.uploadPreview}
+                onClick={() => Taro.chooseImage({
+                  count: 1,
+                  success: (r) => setNewDoc(prev => ({ ...prev, imageUrl: r.tempFilePaths?.[0] || prev.imageUrl }))
+                })}
+              >
+                {newDoc.imageUrl ? (
+                  <View style={{
+                    width: '100%', height: '100%',
+                    backgroundImage: `url(${newDoc.imageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    borderRadius: '12rpx'
+                  }} />
+                ) : (
+                  <>
+                    <Text className={styles.previewIcon}>🖼️</Text>
+                    <Text className={styles.previewText}>点击上传/拍照（可选）</Text>
+                  </>
+                )}
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>单据名称 *</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：性激素六项报告"
+                    placeholderClass={styles.formPlaceholder}
+                    value={newDoc.title}
+                    onInput={e => setNewDoc(prev => ({ ...prev, title: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>分类</Text>
+                <View className={styles.formRow}>
+                  {Object.entries(docCategoryConfig).map(([key, cfg]) => (
+                    <View
+                      key={key}
+                      className={classnames(styles.chip, newDoc.category === key && styles.active)}
+                      onClick={() => setNewDoc(prev => ({ ...prev, category: key as any }))}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>日期</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    type='text'
+                    value={newDoc.date}
+                    placeholder='YYYY-MM-DD'
+                    onInput={e => setNewDoc(prev => ({ ...prev, date: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>医院</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：XX市妇幼保健院"
+                    placeholderClass={styles.formPlaceholder}
+                    value={newDoc.hospital}
+                    onInput={e => setNewDoc(prev => ({ ...prev, hospital: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>备注</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="其他需要记录的信息..."
+                    placeholderClass={styles.formPlaceholder}
+                    value={newDoc.notes}
+                    onInput={e => setNewDoc(prev => ({ ...prev, notes: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+            </View>
+          ),
+          saveDocument,
+          '保存归档'
+        )}
       </View>
     );
   };
 
+  // ==========================================
+  // 费用 Tab（支持完整录入）
+  // ==========================================
   const renderExpenseTab = () => {
     const categories = Object.entries(expenseByCategory).filter(([_, v]) => v > 0);
-    const categoryMap = Object.keys(expenseCategoryConfig);
 
     return (
       <View>
-        {/* 总金额卡片 */}
         <View className={styles.summaryCard}>
           <Text className={styles.summaryTitle}>💸 疗程累计花费</Text>
           <View style={{ display: 'flex', alignItems: 'baseline' }}>
@@ -385,8 +712,7 @@ const ChecklistPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 费用列表 */}
-        {expenseList.sort((a, b) => b.date.localeCompare(a.date)).map(exp => {
+        {expenses.slice().sort((a, b) => b.date.localeCompare(a.date)).map(exp => {
           const config = expenseCategoryConfig[exp.category];
           return (
             <View key={exp.id} className={styles.expenseItem}>
@@ -420,19 +746,101 @@ const ChecklistPage: React.FC = () => {
             textAlign: 'center',
             border: '2rpx dashed #FFE4EA'
           }}
-          onClick={() => Taro.showToast({ title: '添加费用记录', icon: 'none' })}
+          onClick={openExpenseForm}
         >
           <Text style={{ color: '#FF8BA7', fontSize: '26rpx', fontWeight: 500 }}>
             ➕ 新增费用记录
           </Text>
         </View>
+
+        {/* 费用表单模态 */}
+        {renderModal(
+          showExpenseModal,
+          '💰 记录费用',
+          () => setShowExpenseModal(false),
+          (
+            <View>
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>金额 *</Text>
+                <View className={styles.formInput}>
+                  <Text style={{ fontSize: '36rpx', color: '#FF8BA7', fontWeight: 600, marginRight: '8rpx' }}>¥</Text>
+                  <Input
+                    type='digit'
+                    placeholder="0.00"
+                    placeholderClass={styles.formPlaceholder}
+                    value={newExpense.amount}
+                    onInput={e => setNewExpense(prev => ({ ...prev, amount: e.detail.value }))}
+                    style={{ flex: 1, fontSize: '32rpx', fontWeight: 600, color: '#2D3436' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>类别</Text>
+                <View className={styles.formRow}>
+                  {Object.entries(expenseCategoryConfig).map(([key, cfg]) => (
+                    <View
+                      key={key}
+                      className={classnames(styles.chip, newExpense.category === key && styles.active)}
+                      onClick={() => setNewExpense(prev => ({ ...prev, category: key as any }))}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>费用说明 *</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：B超监测 #2"
+                    placeholderClass={styles.formPlaceholder}
+                    value={newExpense.description}
+                    onInput={e => setNewExpense(prev => ({ ...prev, description: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>日期</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    value={newExpense.date}
+                    placeholder='YYYY-MM-DD'
+                    onInput={e => setNewExpense(prev => ({ ...prev, date: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>医院（选填）</Text>
+                <View className={styles.formInput}>
+                  <Input
+                    placeholder="例如：XX市妇幼保健院"
+                    placeholderClass={styles.formPlaceholder}
+                    value={newExpense.hospital}
+                    onInput={e => setNewExpense(prev => ({ ...prev, hospital: e.detail.value }))}
+                    style={{ width: '100%', fontSize: '28rpx' }}
+                  />
+                </View>
+              </View>
+            </View>
+          ),
+          saveExpense,
+          '保存记录'
+        )}
       </View>
     );
   };
 
+  // ==========================================
+  // 问题卡片 Tab（支持新增 + 就诊提醒标记）
+  // ==========================================
   const renderQuestionTab = () => {
-    const answered = questionList.filter(q => q.isAsked);
-    const unanswered = questionList.filter(q => !q.isAsked);
+    const { unanswered, answered } = questionGroups;
 
     return (
       <View>
@@ -444,6 +852,7 @@ const ChecklistPage: React.FC = () => {
             <Text className={styles.summaryAmount}>{unanswered.length}</Text>
             <Text style={{ fontSize: '28rpx', color: '#fff', opacity: 0.85, marginLeft: '8rpx' }}>
               个待提问 · {answered.length} 个已回答
+              {remindedQuestions > 0 && ` · ${remindedQuestions}个就诊提醒`}
             </Text>
           </View>
           <Text style={{ fontSize: '24rpx', opacity: 0.85, lineHeight: 1.5 }}>
@@ -451,36 +860,38 @@ const ChecklistPage: React.FC = () => {
           </Text>
         </View>
 
-        {/* 未回答 */}
         {unanswered.length > 0 && (
           <View>
             <View className={styles.groupHeader}>
               <Text className={styles.groupTitle}>📝 待咨询</Text>
               <Text className={styles.groupCount}>{unanswered.length} 个</Text>
             </View>
-            {unanswered.map(q => (
-              <View key={q.id} className={classnames(styles.questionCard, styles.unanswered)}>
-                <View className={styles.questionHeader}>
-                  <Text className={styles.questionText} style={{ marginBottom: 0 }}>{q.question}</Text>
-                  <View className={styles.questionStatus} style={{ backgroundColor: '#FFF9E6' }}>
-                    <Text className={styles.questionStatusText} style={{ color: '#F39C12' }}>待咨询</Text>
+            {unanswered.map(q => {
+              const isReminded = !!(q as any).isReminded;
+              return (
+                <View key={q.id} className={classnames(styles.questionCard, styles.unanswered)}>
+                  <View className={styles.questionHeader}>
+                    <Text className={styles.questionText} style={{ marginBottom: 0 }}>{q.question}</Text>
+                    <View className={styles.questionStatus} style={{ backgroundColor: '#FFF9E6' }}>
+                      <Text className={styles.questionStatusText} style={{ color: '#F39C12' }}>待咨询</Text>
+                    </View>
+                  </View>
+                  <View className={styles.questionFooter}>
+                    <Text className={styles.questionDate}>{q.date}</Text>
+                    <Text
+                      className={isReminded ? styles.questionReminderActive : ''}
+                      style={{ fontSize: '24rpx', color: isReminded ? '#E17055' : '#FF8BA7', fontWeight: isReminded ? 500 : 400 }}
+                      onClick={() => toggleQuestionReminder(q.id)}
+                    >
+                      {isReminded ? '🔔 就诊提醒中' : '🔔 就诊时提醒我'}
+                    </Text>
                   </View>
                 </View>
-                <View className={styles.questionFooter}>
-                  <Text className={styles.questionDate}>{q.date}</Text>
-                  <Text
-                    style={{ fontSize: '24rpx', color: '#FF8BA7' }}
-                    onClick={() => Taro.showToast({ title: '已添加到就诊提醒', icon: 'none' })}
-                  >
-                    🔔 就诊时提醒我
-                  </Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
 
-        {/* 已回答 */}
         {answered.length > 0 && (
           <View style={{ marginTop: '8rpx' }}>
             <View className={styles.groupHeader}>
@@ -512,7 +923,6 @@ const ChecklistPage: React.FC = () => {
           </View>
         )}
 
-        {/* 新增提问 */}
         <View
           style={{
             marginTop: '16rpx',
@@ -523,28 +933,53 @@ const ChecklistPage: React.FC = () => {
             border: '2rpx dashed #DDD6FE',
             boxShadow: '0 4rpx 16rpx rgba(139, 92, 246, 0.06)'
           }}
-          onClick={() => Taro.showModal({
-            title: '记录新问题',
-            editable: true,
-            placeholderText: '输入你想问医生的问题...',
-            confirmText: '保存',
-            confirmColor: '#8B5CF6',
-            success: (res) => {
-              if (res.confirm && res.content) {
-                Taro.showToast({ title: '问题已保存', icon: 'success' });
-              }
-            }
-          })}
+          onClick={() => setShowQuestionModal(true)}
         >
           <Text style={{ fontSize: '48rpx', display: 'block', marginBottom: '12rpx' }}>❓</Text>
           <Text style={{ color: '#8B5CF6', fontSize: '26rpx', fontWeight: 500 }}>
             记录新问题
           </Text>
         </View>
+
+        {/* 新增问题表单模态 */}
+        {renderModal(
+          showQuestionModal,
+          '❓ 记录新问题',
+          () => setShowQuestionModal(false),
+          (
+            <View>
+              <View className={styles.formGroup}>
+                <Text className={styles.formLabel}>想问医生的问题 *</Text>
+                <View className={styles.formTextarea}>
+                  <Input
+                    placeholder="例如：促排期间肚子胀正常吗？"
+                    placeholderClass={styles.formPlaceholder}
+                    value={newQuestion}
+                    onInput={e => setNewQuestion(e.detail.value)}
+                    style={{
+                      width: '100%',
+                      fontSize: '28rpx',
+                      minHeight: '200rpx',
+                      lineHeight: '1.6'
+                    }}
+                  />
+                </View>
+              </View>
+              <Text style={{ fontSize: '22rpx', color: '#B2BEC3' }}>
+                💡 保存后将自动加入「待咨询」区，就诊时可一键标记提醒
+              </Text>
+            </View>
+          ),
+          saveQuestion,
+          '加入待咨询'
+        )}
       </View>
     );
   };
 
+  // ==========================================
+  // Tab Badge
+  // ==========================================
   const getBadge = (tab: TabType): number | null => {
     switch (tab) {
       case 'todo': return pendingTodos > 0 ? pendingTodos : null;

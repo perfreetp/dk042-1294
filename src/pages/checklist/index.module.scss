@@ -471,6 +471,203 @@
   margin-bottom: $spacing-sm;
 }
 
+// ===== 通用模态框 =====
+.modalMask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modalSheet {
+  width: 100%;
+  max-width: 750rpx;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: $spacing-xl $spacing-lg $spacing-lg;
+  animation: slideUp 0.25s ease;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.modalClose {
+  font-size: 40rpx;
+  color: $color-text-tertiary;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.formGroup {
+  margin-bottom: $spacing-md;
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.formInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx $spacing-md;
+  background: #F7F8FA;
+  border: 2rpx solid #EEF0F3;
+  border-radius: $radius-lg;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  min-height: 80rpx;
+  display: flex;
+  align-items: center;
+}
+
+.formTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx $spacing-md;
+  background: #F7F8FA;
+  border: 2rpx solid #EEF0F3;
+  border-radius: $radius-lg;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  min-height: 160rpx;
+  line-height: 1.6;
+}
+
+.formPlaceholder {
+  color: #B2BEC3;
+}
+
+.formRow {
+  display: flex;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 14rpx 24rpx;
+  border-radius: $radius-round;
+  background: #F7F8FA;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 2rpx solid transparent;
+  transition: all 0.15s ease;
+
+  &.active {
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    color: #fff;
+    font-weight: $font-weight-medium;
+    border-color: transparent;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.modalFooter {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-xl 0 $spacing-sm;
+  padding-top: $spacing-md;
+  border-top: 2rpx solid #F2F3F5;
+}
+
+.cancelBtn {
+  flex: 1;
+  padding: 24rpx;
+  border-radius: $radius-xl;
+  background: #F2F3F5;
+  text-align: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+
+  &:active {
+    background: #E8E9EB;
+  }
+}
+
+.submitBtn {
+  flex: 2;
+  padding: 24rpx;
+  border-radius: $radius-xl;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  text-align: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(255, 139, 167, 0.3);
+
+  &:active {
+    opacity: 0.9;
+  }
+}
+
+.uploadPreview {
+  width: 100%;
+  height: 320rpx;
+  background: linear-gradient(135deg, #FFF5F7 0%, #F0EEFF 100%);
+  border-radius: $radius-lg;
+  border: 2rpx dashed #FFC3D0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  margin-bottom: $spacing-md;
+
+  .previewIcon {
+    font-size: 96rpx;
+  }
+
+  .previewText {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+  }
+}
+
+.questionReminderActive {
+  background: #FFF9E6 !important;
+  color: #E17055 !important;
+  padding: 6rpx 12rpx !important;
+  border-radius: $radius-round !important;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
 .answerLabel {
   font-size: $font-size-xs;
   color: $color-secondary;

@@ -830,3 +830,196 @@
   font-size: 20rpx;
   color: $color-text-tertiary;
 }
+
+.modalMask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modalSheet {
+  width: 100%;
+  max-width: 750rpx;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: $spacing-lg $spacing-lg $spacing-xl;
+  animation: slideUp 0.25s ease;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.modalClose {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-round;
+  background: #F2F3F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #86909C;
+  font-size: 28rpx;
+}
+
+.modalBody {
+  padding-bottom: $spacing-lg;
+}
+
+.modalFooter {
+  display: flex;
+  gap: $spacing-sm;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.cancelBtn {
+  flex: 1;
+  padding: 24rpx;
+  border-radius: $radius-xl;
+  background: #F2F3F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text {
+    font-size: $font-size-md;
+    color: $color-text-secondary;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.submitBtn {
+  flex: 2;
+  padding: 24rpx;
+  border-radius: $radius-xl;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(255, 139, 167, 0.3);
+
+  text {
+    font-size: $font-size-md;
+    color: #fff;
+    font-weight: $font-weight-bold;
+  }
+}
+
+.formGroup {
+  margin-bottom: $spacing-md;
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  font-weight: 600;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.formInput {
+  width: 100%;
+  padding: 20rpx $spacing-md;
+  background: #F7F8FA;
+  border: 2rpx solid #EEF0F3;
+  border-radius: $radius-lg;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  min-height: 80rpx;
+  box-sizing: border-box;
+}
+
+.formTextarea {
+  min-height: 160rpx;
+  width: 100%;
+  padding: 20rpx $spacing-md;
+  background: #F7F8FA;
+  border: 2rpx solid #EEF0F3;
+  border-radius: $radius-lg;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.formPlaceholder {
+  color: #B2BEC3;
+}
+
+.chipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.chip {
+  padding: 14rpx 24rpx;
+  border-radius: 999rpx;
+  background: #F7F8FA;
+  border: 2rpx solid transparent;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    color: #fff;
+    border-color: $color-primary;
+    font-weight: 500;
+  }
+
+  &.positive {
+    &.active {
+      background: linear-gradient(135deg, #00B894, #55EFC4);
+      border-color: #00B894;
+    }
+  }
+
+  &.negative {
+    &.active {
+      background: linear-gradient(135deg, #636E72, #B2BEC3);
+      border-color: #636E72;
+    }
+  }
+
+  &.pending {
+    &.active {
+      background: linear-gradient(135deg, #F39C12, #FDCB6E);
+      border-color: #F39C12;
+    }
+  }
+}
+
+.inputInlineHint {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 8rpx;
+  display: block;
+}
