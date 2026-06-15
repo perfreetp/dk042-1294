@@ -78,6 +78,25 @@ const ChecklistPage: React.FC = () => {
   const [docCategory, setDocCategory] = useState<string>('all');
   const [expenseCategory, setExpenseCategory] = useState<string>('all');
   const [expenseHospital, setExpenseHospital] = useState<string>('all');
+  const [highlightId, setHighlightId] = useState<string>('');
+
+  const jumpToDocument = (docId: string) => {
+    setDocCategory('all');
+    setHighlightId(docId);
+    setActiveTab('document');
+    setTimeout(() => setHighlightId(''), 3000);
+  };
+
+  const jumpToExpense = (expId: string) => {
+    const exp = expenses.find(e => e.id === expId);
+    if (exp) {
+      setExpenseCategory('all');
+      setExpenseHospital(exp.hospital || 'all');
+    }
+    setHighlightId(expId);
+    setActiveTab('expense');
+    setTimeout(() => setHighlightId(''), 3000);
+  };
 
   useEffect(() => {
     saveToStorage(STORAGE_KEY_DOCS, documents);
@@ -284,6 +303,10 @@ const ChecklistPage: React.FC = () => {
         Taro.showToast({ title: '请输入费用金额', icon: 'none' });
         return;
       }
+      if (!newDoc.date || !newDoc.date.trim()) {
+        Taro.showToast({ title: '请填写日期', icon: 'none' });
+        return;
+      }
       if (!newDoc.hospital || !newDoc.hospital.trim()) {
         Taro.showToast({ title: '请填写医院名称', icon: 'none' });
         return;
@@ -302,7 +325,7 @@ const ChecklistPage: React.FC = () => {
       relatedExpenseId: undefined
     };
 
-    if (newDoc.createExpense && newDoc.category === 'invoice') {
+    if (newDoc.createExpense) {
       const amt = parseFloat(newDoc.expenseAmount);
       const expId = `exp-u${Date.now()}`;
       const exp: ExpenseRecord = {
@@ -343,6 +366,10 @@ const ChecklistPage: React.FC = () => {
     const amt = parseFloat(newExpense.amount);
     if (!amt || amt <= 0) {
       Taro.showToast({ title: '请输入有效金额', icon: 'none' });
+      return;
+    }
+    if (!newExpense.date || !newExpense.date.trim()) {
+      Taro.showToast({ title: '请填写日期', icon: 'none' });
       return;
     }
     if (!newExpense.hospital || !newExpense.hospital.trim()) {
@@ -731,8 +758,9 @@ const ChecklistPage: React.FC = () => {
         <View className={styles.docGrid}>
           {filteredDocs.map(doc => {
             const config = docCategoryConfig[doc.category];
+            const isHighlighted = highlightId === doc.id;
             return (
-              <View key={doc.id} className={styles.docCard}>
+              <View key={doc.id} className={classnames(styles.docCard, isHighlighted && styles.highlightCard)}>
                 {(doc as any).imageUrl ? (
                   <View
                     className={styles.docIconWrap}
@@ -780,19 +808,14 @@ const ChecklistPage: React.FC = () => {
                   const relExp = expenses.find(e => e.id === doc.relatedExpenseId);
                   if (!relExp) return null;
                   return (
-                    <Text style={{
-                      fontSize: '22rpx',
-                      color: '#6EC6B7',
-                      marginTop: '8rpx',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4rpx',
-                      background: '#E8F8F5',
-                      padding: '8rpx 12rpx',
-                      borderRadius: '8rpx'
-                    }}>
-                      💰 关联费用：¥{relExp.amount} · {relExp.description}
-                    </Text>
+                    <View
+                      className={styles.linkTag}
+                      onClick={() => jumpToExpense(doc.relatedExpenseId!)}
+                    >
+                      <Text style={{ fontSize: '22rpx', color: '#6EC6B7' }}>
+                        💰 关联费用：¥{relExp.amount} · {relExp.description} →
+                      </Text>
+                    </View>
                   );
                 })()}
               </View>
@@ -880,7 +903,7 @@ const ChecklistPage: React.FC = () => {
               </View>
 
               <View className={styles.formGroup}>
-                <Text className={styles.formLabel}>医院</Text>
+                <Text className={styles.formLabel}>医院 *</Text>
                 <View className={styles.formInput}>
                   <Input
                     placeholder="例如：XX市妇幼保健院"
@@ -905,37 +928,44 @@ const ChecklistPage: React.FC = () => {
                 </View>
               </View>
 
-              {newDoc.category === 'invoice' && (
+              <View style={{
+                padding: '16rpx 20rpx',
+                background: newDoc.createExpense ? '#FFF5F7' : '#F7F8FA',
+                borderRadius: '12rpx',
+                marginBottom: '16rpx',
+                border: newDoc.createExpense ? '2rpx solid #FFC3D0' : '2rpx solid transparent'
+              }}>
+                <View
+                  style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}
+                  onClick={() => setNewDoc(prev => ({ ...prev, createExpense: !prev.createExpense }))}
+                >
+                  <View
+                    className={classnames(styles.chip, newDoc.createExpense && styles.active)}
+                    style={{ padding: '10rpx 20rpx', fontSize: '24rpx' }}
+                  >
+                    <Text>💰 同时生成费用记录</Text>
+                  </View>
+                  <Text style={{ fontSize: '22rpx', color: '#86909C' }}>保存后自动关联</Text>
+                </View>
+              </View>
+
+              {newDoc.createExpense && (
                 <View style={{ padding: '20rpx', background: '#FFF5F7', borderRadius: '12rpx', marginBottom: '16rpx' }}>
                   <View className={styles.formGroup} style={{ marginBottom: 0 }}>
-                    <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx', marginBottom: '16rpx' }}>
-                      <View
-                        className={classnames(styles.chip, newDoc.createExpense && styles.active)}
-                        style={{ padding: '10rpx 20rpx', fontSize: '24rpx' }}
-                        onClick={() => setNewDoc(prev => ({ ...prev, createExpense: !prev.createExpense }))}
-                      >
-                        <Text>💰 同时生成费用记录</Text>
-                      </View>
-                      <Text style={{ fontSize: '22rpx', color: '#86909C' }}>保存后自动关联</Text>
+                    <Text className={styles.formLabel}>费用金额 *</Text>
+                    <View className={styles.formInput}>
+                      <Input
+                        type='digit'
+                        placeholder="请输入金额，例如 865.50"
+                        placeholderClass={styles.formPlaceholder}
+                        value={newDoc.expenseAmount}
+                        onInput={e => setNewDoc(prev => ({ ...prev, expenseAmount: e.detail.value }))}
+                        style={{ width: '100%', fontSize: '28rpx' }}
+                      />
                     </View>
-                    {newDoc.createExpense && (
-                      <View className={styles.formGroup} style={{ marginBottom: 0 }}>
-                        <Text className={styles.formLabel}>费用金额 *</Text>
-                        <View className={styles.formInput}>
-                          <Input
-                            type='digit'
-                            placeholder="请输入发票金额，例如 865.50"
-                            placeholderClass={styles.formPlaceholder}
-                            value={newDoc.expenseAmount}
-                            onInput={e => setNewDoc(prev => ({ ...prev, expenseAmount: e.detail.value }))}
-                            style={{ width: '100%', fontSize: '28rpx' }}
-                          />
-                        </View>
-                        <Text style={{ fontSize: '22rpx', color: '#B2BEC3', marginTop: '8rpx', display: 'block' }}>
-                          💡 单据名称、日期、医院会自动带入费用记录
-                        </Text>
-                      </View>
-                    )}
+                    <Text style={{ fontSize: '22rpx', color: '#B2BEC3', marginTop: '8rpx', display: 'block' }}>
+                      💡 单据名称、日期、医院会自动带入费用记录
+                    </Text>
                   </View>
                 </View>
               )}
@@ -1031,8 +1061,9 @@ const ChecklistPage: React.FC = () => {
           const relatedDoc = exp.relatedDocumentId
             ? documents.find(d => d.id === exp.relatedDocumentId)
             : undefined;
+          const isHighlighted = highlightId === exp.id;
           return (
-            <View key={exp.id} className={styles.expenseItem}>
+            <View key={exp.id} className={classnames(styles.expenseItem, isHighlighted && styles.highlightCard)}>
               <View className={styles.expenseLeft}>
                 <View className={styles.expenseIconWrap} style={{ backgroundColor: config.bg }}>
                   <Text className={styles.expenseIcon}>{config.icon}</Text>
@@ -1043,18 +1074,14 @@ const ChecklistPage: React.FC = () => {
                     {exp.date.slice(5)} {exp.hospital ? `· ${exp.hospital}` : ''}
                   </Text>
                   {relatedDoc && (
-                    <Text
-                      style={{
-                        fontSize: '22rpx',
-                        color: '#FF8BA7',
-                        marginTop: '6rpx',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4rpx'
-                      }}
+                    <View
+                      className={styles.linkTag}
+                      onClick={() => jumpToDocument(relatedDoc.id)}
                     >
-                      📄 关联单据：{relatedDoc.title}
-                    </Text>
+                      <Text style={{ fontSize: '22rpx', color: '#FF8BA7' }}>
+                        📄 关联单据：{relatedDoc.title} →
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>

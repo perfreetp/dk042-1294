@@ -863,3 +863,27 @@
     background: #F7F8FA;
   }
 }
+
+.highlightCard {
+  animation: highlightPulse 3s ease;
+  box-shadow: 0 0 0 4rpx rgba(255, 139, 167, 0.4);
+}
+
+@keyframes highlightPulse {
+  0% { box-shadow: 0 0 0 4rpx rgba(255, 139, 167, 0.6); }
+  30% { box-shadow: 0 0 0 8rpx rgba(255, 139, 167, 0.3); }
+  100% { box-shadow: 0 0 0 4rpx rgba(255, 139, 167, 0); }
+}
+
+.linkTag {
+  margin-top: 8rpx;
+  padding: 8rpx 12rpx;
+  background: #E8F8F5;
+  border-radius: 8rpx;
+  cursor: pointer;
+
+  &:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+}

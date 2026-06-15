@@ -607,7 +607,7 @@ const RecordsPage: React.FC = () => {
             onInput={e => setNewTest(prev => ({ ...prev, hcgValue: e.detail.value }))}
           />
           <Text className={styles.inputInlineHint}>
-            💡 一般 D14 > 100 mIU/mL 表示好孕概率高
+            💡 一般 D14 {'>'} 100 mIU/mL 表示好孕概率高
           </Text>
         </View>
       )}
